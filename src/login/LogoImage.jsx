@@ -1,7 +1,7 @@
-import { useTheme, useMediaQuery } from '@mui/material';
+import { useTheme, useMediaQuery, Typography } from '@mui/material';
 import { useSelector } from 'react-redux';
 import { makeStyles } from 'tss-react/mui';
-import Logo from '../resources/images/logo.svg?react';
+import branding from '../../branding';
 
 const useStyles = makeStyles()((theme) => ({
   image: {
@@ -11,6 +11,13 @@ const useStyles = makeStyles()((theme) => ({
     width: 'auto',
     height: 'auto',
     margin: theme.spacing(2),
+  },
+  wordmark: {
+    maxWidth: '240px',
+    margin: theme.spacing(2),
+    fontWeight: 700,
+    lineHeight: 1.1,
+    textAlign: 'center',
   },
 }));
 
@@ -22,6 +29,7 @@ const LogoImage = ({ color }) => {
 
   const logo = useSelector((state) => state.session.server.attributes?.logo);
   const logoInverted = useSelector((state) => state.session.server.attributes?.logoInverted);
+  const title = useSelector((state) => state.session.server.attributes?.title);
 
   if (logo) {
     if (expanded && logoInverted) {
@@ -29,7 +37,11 @@ const LogoImage = ({ color }) => {
     }
     return <img className={classes.image} src={logo} alt="" />;
   }
-  return <Logo className={classes.image} style={{ color }} />;
+  return (
+    <Typography className={classes.wordmark} variant="h3" style={{ color }}>
+      {title || branding.name}
+    </Typography>
+  );
 };
 
 export default LogoImage;

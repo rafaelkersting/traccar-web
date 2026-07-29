@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react-swc';
 import svgr from 'vite-plugin-svgr';
 import { VitePWA } from 'vite-plugin-pwa';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import branding from './branding.js';
 
 export default defineConfig(() => ({
   server: {
@@ -26,8 +27,8 @@ export default defineConfig(() => ({
         globPatterns: ['**/*.{js,css,html,woff,woff2,mp3}'],
       },
       manifest: {
-        short_name: '${title}',
-        name: '${description}',
+        short_name: branding.name,
+        name: branding.name,
         theme_color: '${colorPrimary}',
         icons: [
           {
