@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { ThemeProvider, useMediaQuery } from '@mui/material';
 import { CacheProvider } from '@emotion/react';
@@ -6,6 +7,7 @@ import { prefixer } from 'stylis';
 import rtlPlugin from 'stylis-plugin-rtl';
 import theme from './common/theme';
 import { useLocalization } from './common/components/LocalizationProvider';
+import branding from '../branding';
 
 const cache = {
   ltr: createCache({
@@ -27,6 +29,13 @@ const AppThemeProvider = ({ children }) => {
   const darkMode = serverDarkMode !== undefined ? serverDarkMode : preferDarkMode;
 
   const themeInstance = theme(server, darkMode, direction);
+
+  useEffect(() => {
+    document.title = server?.attributes?.title || branding.name;
+    document
+      .querySelector('meta[name="description"]')
+      ?.setAttribute('content', server?.attributes?.description || branding.description);
+  }, [server]);
 
   return (
     <CacheProvider value={cache[direction]}>
