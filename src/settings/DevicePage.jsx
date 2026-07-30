@@ -9,6 +9,7 @@ import {
   Checkbox,
   TextField,
   Button,
+  Alert,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FileInput from '../common/components/FileInput';
@@ -21,10 +22,10 @@ import useDeviceAttributes from '../common/attributes/useDeviceAttributes';
 import { useManager } from '../common/util/permissions';
 import SettingsMenu from './components/SettingsMenu';
 import useCommonDeviceAttributes from '../common/attributes/useCommonDeviceAttributes';
-import { useCatch } from '../reactHelper';
 import useSettingsStyles from './common/useSettingsStyles';
 import QrCodeDialog from '../common/components/QrCodeDialog';
 import fetchOrThrow from '../common/util/fetchOrThrow';
+import { formatImageSize, optimizeDeviceImage } from '../common/util/imageOptimization';
 
 const DevicePage = () => {
   const { classes } = useSettingsStyles();
@@ -41,21 +42,47 @@ const DevicePage = () => {
   const [item, setItem] = useState(uniqueId ? { uniqueId } : null);
   const [showQr, setShowQr] = useState(false);
   const [imageFile, setImageFile] = useState(null);
+  const [imageStatus, setImageStatus] = useState(null);
+  const [optimizingImage, setOptimizingImage] = useState(false);
 
-  const handleFileInput = useCatch(async (newFile) => {
-    setImageFile(newFile);
-    if (newFile && item?.id) {
-      const response = await fetchOrThrow(`/api/devices/${item.id}/image`, {
-        method: 'POST',
-        body: newFile,
-      });
-      setItem({ ...item, attributes: { ...item.attributes, deviceImage: await response.text() } });
-    } else if (!newFile) {
+  const handleFileInput = async (newFile) => {
+    if (!newFile) {
+      setImageFile(null);
+      setImageStatus(null);
       // eslint-disable-next-line no-unused-vars
       const { deviceImage, ...remainingAttributes } = item.attributes || {};
       setItem({ ...item, attributes: remainingAttributes });
+      return;
     }
-  });
+
+    setOptimizingImage(true);
+    setImageStatus({ severity: 'info', message: 'Otimizando imagem...' });
+    try {
+      const result = await optimizeDeviceImage(newFile);
+      if (item?.id) {
+        const response = await fetchOrThrow(`/api/devices/${item.id}/image`, {
+          method: 'POST',
+          body: result.file,
+        });
+        setItem({
+          ...item,
+          attributes: { ...item.attributes, deviceImage: await response.text() },
+        });
+      }
+      setImageFile(result.file);
+      setImageStatus({
+        severity: 'success',
+        message: `Imagem otimizada com sucesso: ${formatImageSize(result.originalSize)} → ${formatImageSize(result.finalSize)}.`,
+      });
+    } catch (error) {
+      setImageStatus({
+        severity: 'error',
+        message: `Não foi possível processar e enviar a imagem. ${error.message}`,
+      });
+    } finally {
+      setOptimizingImage(false);
+    }
+  };
 
   const validate = () => item && item.name && item.uniqueId;
 
@@ -168,8 +195,18 @@ const DevicePage = () => {
                   placeholder={t('attributeDeviceImage')}
                   value={imageFile}
                   onChange={handleFileInput}
-                  slotProps={{ htmlInput: { accept: 'image/*' } }}
+                  slotProps={{
+                    htmlInput: {
+                      accept: 'image/jpeg,image/png,image/gif,image/webp',
+                      disabled: optimizingImage,
+                    },
+                  }}
                 />
+                {imageStatus && (
+                  <Alert severity={imageStatus.severity} aria-live="polite">
+                    {imageStatus.message}
+                  </Alert>
+                )}
               </AccordionDetails>
             </Accordion>
           )}
