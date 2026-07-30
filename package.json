@@ -41,6 +41,7 @@
   "scripts": {
     "start": "vite --host",
     "build": "vite build",
+    "test": "node --test",
     "generate-pwa-assets": "pwa-assets-generator --preset minimal public/logo.svg",
     "lint": "eslint --max-warnings 0 .",
     "lint:fix": "eslint --fix --max-warnings 0 ."
