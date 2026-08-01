@@ -39,7 +39,8 @@ const MapMarkers = ({ markers, showTitles }) => {
           'text-size': 12,
         },
         paint: {
-          'text-halo-color': 'white',
+          'text-color': theme.palette.text.primary,
+          'text-halo-color': theme.palette.background.paper,
           'text-halo-width': 1,
         },
       });
@@ -64,7 +65,7 @@ const MapMarkers = ({ markers, showTitles }) => {
         map.removeSource(id);
       }
     };
-  }, [showTitles, iconScale, id]);
+  }, [showTitles, iconScale, id, theme.palette.background.paper, theme.palette.text.primary]);
 
   useEffect(() => {
     map.getSource(id)?.setData({

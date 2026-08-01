@@ -156,7 +156,8 @@ const MapPositions = ({
           'symbol-sort-key': ['get', 'id'],
         },
         paint: {
-          'text-halo-color': 'white',
+          'text-color': theme.palette.text.primary,
+          'text-halo-color': theme.palette.background.paper,
           'text-halo-width': 1,
         },
       });
@@ -179,16 +180,30 @@ const MapPositions = ({
       map.on('click', source, onMarkerClickCallback);
     });
     map.addLayer({
+      id: `${clusters}-background`,
+      type: 'circle',
+      source: id,
+      filter: ['has', 'point_count'],
+      paint: {
+        'circle-radius': 18 * iconScale,
+        'circle-color': theme.palette.primary.main,
+        'circle-stroke-color': theme.palette.background.paper,
+        'circle-stroke-width': 3,
+        'circle-blur': 0.05,
+      },
+    });
+    map.addLayer({
       id: clusters,
       type: 'symbol',
       source: id,
       filter: ['has', 'point_count'],
       layout: {
-        'icon-image': 'background',
-        'icon-size': iconScale,
         'text-field': '{point_count_abbreviated}',
         'text-font': findFonts(map),
         'text-size': 14,
+      },
+      paint: {
+        'text-color': theme.palette.primary.contrastText,
       },
     });
 
@@ -205,6 +220,9 @@ const MapPositions = ({
 
       if (map.getLayer(clusters)) {
         map.removeLayer(clusters);
+      }
+      if (map.getLayer(`${clusters}-background`)) {
+        map.removeLayer(`${clusters}-background`);
       }
 
       [id, selected].forEach((source) => {
@@ -233,6 +251,10 @@ const MapPositions = ({
     id,
     selected,
     titleField,
+    theme.palette.background.paper,
+    theme.palette.primary.contrastText,
+    theme.palette.primary.main,
+    theme.palette.text.primary,
   ]);
 
   useEffect(() => {

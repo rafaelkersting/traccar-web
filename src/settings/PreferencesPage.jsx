@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -39,6 +39,13 @@ import { sessionActions } from '../store';
 import { useAdministrator, useRestriction } from '../common/util/permissions';
 import useSettingsStyles from './common/useSettingsStyles';
 import fetchOrThrow from '../common/util/fetchOrThrow';
+import SystemThemeSelector from './components/SystemThemeSelector';
+import { useSystemTheme } from '../common/theme/SystemThemeContext';
+import {
+  DEFAULT_SYSTEM_THEME,
+  SYSTEM_THEME_ATTRIBUTE,
+  resolveSystemThemeId,
+} from '../common/theme/systemThemes';
 
 const deviceFields = [
   { id: 'name', name: 'sharedName' },
@@ -62,6 +69,12 @@ const PreferencesPage = () => {
 
   const user = useSelector((state) => state.session.user);
   const [attributes, setAttributes] = useState(user.attributes);
+  const { persistedThemeId, previewThemeId, previewTheme, clearThemePreview } = useSystemTheme();
+  const selectedThemeId = resolveSystemThemeId(
+    attributes[SYSTEM_THEME_ATTRIBUTE] || persistedThemeId,
+  );
+
+  useEffect(() => () => clearThemePreview(), [clearThemePreview]);
 
   const versionApp = import.meta.env.VITE_APP_VERSION;
   const versionServer = useSelector((state) => state.session.server.version);
@@ -100,8 +113,20 @@ const PreferencesPage = () => {
       body: JSON.stringify({ ...user, attributes }),
     });
     dispatch(sessionActions.updateUser(await response.json()));
+    clearThemePreview();
     navigate(-1);
   });
+
+  const handleCancel = () => {
+    clearThemePreview();
+    navigate(-1);
+  };
+
+  const handleThemeChange = (themeId) => {
+    const resolvedThemeId = resolveSystemThemeId(themeId);
+    setAttributes({ ...attributes, [SYSTEM_THEME_ATTRIBUTE]: resolvedThemeId });
+    previewTheme(resolvedThemeId);
+  };
 
   const handleReboot = useCatch(async () => {
     const response = await fetch('/api/server/reboot', { method: 'POST' });
@@ -110,9 +135,23 @@ const PreferencesPage = () => {
 
   return (
     <PageLayout menu={<SettingsMenu />} breadcrumbs={['settingsTitle', 'sharedPreferences']}>
-      <Container maxWidth="xs" className={classes.container}>
+      <Container maxWidth="md" className={classes.container}>
         {!readonly && (
           <>
+            <Accordion defaultExpanded>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle1">Aparência do Sistema</Typography>
+              </AccordionSummary>
+              <AccordionDetails className={classes.details}>
+                <Typography variant="subtitle2">Template do Sistema</Typography>
+                <SystemThemeSelector
+                  value={selectedThemeId}
+                  previewActive={Boolean(previewThemeId)}
+                  onChange={handleThemeChange}
+                  onRestore={() => handleThemeChange(DEFAULT_SYSTEM_THEME)}
+                />
+              </AccordionDetails>
+            </Accordion>
             <Accordion defaultExpanded>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="subtitle1">{t('mapTitle')}</Typography>
@@ -426,7 +465,7 @@ const PreferencesPage = () => {
               </AccordionDetails>
             </Accordion>
             <div className={classes.buttons}>
-              <Button type="button" color="primary" variant="outlined" onClick={() => navigate(-1)}>
+              <Button type="button" color="primary" variant="outlined" onClick={handleCancel}>
                 {t('sharedCancel')}
               </Button>
               <Button type="button" color="primary" variant="contained" onClick={handleSave}>

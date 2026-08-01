@@ -42,6 +42,9 @@ const useStyles = makeStyles()((theme, { desktopPadding }) => ({
   card: {
     pointerEvents: 'auto',
     width: theme.dimensions.popupMaxWidth,
+    borderRadius:
+      theme.systemTheme.id === 'classic' ? undefined : theme.systemTheme.shape.cardRadius,
+    boxShadow: theme.systemTheme.id === 'classic' ? undefined : theme.systemTheme.effects.shadow,
   },
   header: {
     display: 'flex',
@@ -49,6 +52,8 @@ const useStyles = makeStyles()((theme, { desktopPadding }) => ({
     alignItems: 'center',
     padding: theme.spacing(1, 1, 0, 2),
     color: theme.palette.text.secondary,
+    backgroundColor:
+      theme.systemTheme.id === 'classic' ? undefined : theme.palette.background.paper,
   },
   media: {
     position: 'relative',
@@ -102,6 +107,9 @@ const useStyles = makeStyles()((theme, { desktopPadding }) => ({
   },
   actions: {
     justifyContent: 'space-between',
+    borderTop:
+      theme.systemTheme.id === 'classic' ? undefined : `1px solid ${theme.palette.divider}`,
+    backgroundColor: theme.systemTheme.id === 'classic' ? undefined : theme.palette.surface.main,
   },
   root: {
     pointerEvents: 'none',

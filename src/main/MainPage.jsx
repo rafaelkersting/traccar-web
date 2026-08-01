@@ -19,6 +19,8 @@ const MainMap = lazy(() => import('./MainMap'));
 const useStyles = makeStyles()((theme) => ({
   root: {
     height: '100%',
+    background: theme.systemTheme.effects.pageGradient,
+    backgroundColor: theme.palette.background.default,
   },
   sidebar: {
     pointerEvents: 'none',
@@ -28,9 +30,9 @@ const useStyles = makeStyles()((theme) => ({
       position: 'fixed',
       left: 0,
       top: 0,
-      height: `calc(100% - ${theme.spacing(3)})`,
+      height: theme.systemTheme.layout.sidebarInset ? `calc(100% - ${theme.spacing(3)})` : '100%',
       width: theme.dimensions.drawerWidthDesktop,
-      margin: theme.spacing(1.5),
+      margin: theme.systemTheme.layout.sidebarInset ? theme.spacing(1.5) : 0,
       zIndex: 3,
     },
     [theme.breakpoints.down('md')]: {
@@ -41,10 +43,19 @@ const useStyles = makeStyles()((theme) => ({
   header: {
     pointerEvents: 'auto',
     zIndex: 6,
+    overflow: 'hidden',
+    border: theme.systemTheme.id === 'classic' ? 'none' : `1px solid ${theme.palette.divider}`,
+    borderRadius: theme.systemTheme.layout.sidebarInset
+      ? `${theme.systemTheme.shape.cardRadius}px ${theme.systemTheme.shape.cardRadius}px 0 0`
+      : 0,
   },
   footer: {
     pointerEvents: 'auto',
     zIndex: 5,
+    overflow: 'hidden',
+    borderRadius: theme.systemTheme.layout.sidebarInset
+      ? `0 0 ${theme.systemTheme.shape.cardRadius}px ${theme.systemTheme.shape.cardRadius}px`
+      : 0,
   },
   middle: {
     flex: 1,
@@ -61,6 +72,8 @@ const useStyles = makeStyles()((theme) => ({
     zIndex: 4,
     display: 'flex',
     minHeight: 0,
+    borderLeft: theme.systemTheme.id === 'classic' ? 'none' : `1px solid ${theme.palette.divider}`,
+    borderRight: theme.systemTheme.id === 'classic' ? 'none' : `1px solid ${theme.palette.divider}`,
   },
 }));
 

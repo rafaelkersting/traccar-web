@@ -1,4 +1,4 @@
-export default {
+const dimensions = {
   sidebarWidth: '28%',
   sidebarWidthTablet: '52px',
   drawerWidthDesktop: '360px',
@@ -13,3 +13,10 @@ export default {
   cardContentMaxHeight: '40vh',
   qrCodeSize: 192,
 };
+
+export const getThemeDimensions = (systemTheme) => ({
+  ...dimensions,
+  drawerWidthDesktop: `${systemTheme.layout.sidebarWidth}px`,
+});
+
+export default dimensions;

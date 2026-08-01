@@ -22,6 +22,8 @@ const useStyles = makeStyles()((theme, { miniVariant }) => ({
   root: {
     height: '100%',
     display: 'flex',
+    background: theme.systemTheme.effects.pageGradient,
+    backgroundColor: theme.palette.background.default,
     [theme.breakpoints.down('md')]: {
       flexDirection: 'column',
     },
@@ -63,6 +65,8 @@ const useStyles = makeStyles()((theme, { miniVariant }) => ({
     display: 'flex',
     flexDirection: 'column',
     overflowY: 'auto',
+    background: theme.systemTheme.effects.pageGradient,
+    backgroundColor: theme.palette.background.default,
   },
 }));
 
