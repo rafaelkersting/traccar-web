@@ -8,6 +8,8 @@ import { mapIconKey } from './core/preloadImages';
 import { useAttributePreference } from '../common/util/preferences';
 import { useCatchCallback } from '../reactHelper';
 import { findFonts, fromMapCoordinates, toMapCoordinates } from './core/mapUtil';
+import useDeviceMarkerImages from './core/useDeviceMarkerImages';
+import { resolveDeviceMarkerImage } from './core/deviceMarker';
 
 const MapPositions = ({
   positions,
@@ -28,6 +30,7 @@ const MapPositions = ({
 
   const devices = useSelector((state) => state.devices.items);
   const selectedDeviceId = useSelector((state) => state.devices.selectedId);
+  const markerImages = useDeviceMarkerImages(id, devices);
 
   const mapCluster = useAttributePreference('mapCluster', true);
   const directionType = useAttributePreference('mapDirection', 'selected');
@@ -36,8 +39,12 @@ const MapPositions = ({
   disabledRef.current = disabled;
 
   const createFeature = useCallback(
-    (devices, position, selectedPositionId) => {
+    (devices, position, selectedPositionId, selectedMarker) => {
       const device = devices[position.deviceId];
+      const category = mapIconKey(device.category);
+      const color = showStatus
+        ? position.attributes.color || getStatusColor(device.status)
+        : 'neutral';
       let showDirection;
       switch (directionType) {
         case 'none':
@@ -55,13 +62,18 @@ const MapPositions = ({
         deviceId: position.deviceId,
         name: device.name,
         fixTime: formatTime(position.fixTime, 'seconds'),
-        category: mapIconKey(device.category),
-        color: showStatus ? position.attributes.color || getStatusColor(device.status) : 'neutral',
+        image: resolveDeviceMarkerImage(
+          position.deviceId,
+          `${category}-${color}`,
+          markerImages,
+          selectedMarker,
+        ),
+        customMarker: Boolean(markerImages[position.deviceId]),
         rotation: position.course,
         direction: showDirection,
       };
     },
-    [directionType, showStatus],
+    [directionType, markerImages, showStatus],
   );
 
   const onMouseEnter = () => (map.getCanvas().style.cursor = 'pointer');
@@ -131,13 +143,14 @@ const MapPositions = ({
         source,
         filter: ['!has', 'point_count'],
         layout: {
-          'icon-image': '{category}-{color}',
-          'icon-size': iconScale,
+          'icon-image': '{image}',
+          'icon-size': ['case', ['get', 'customMarker'], 1, iconScale],
+          'icon-anchor': 'center',
           'icon-allow-overlap': true,
           'text-field': `{${titleField || 'name'}}`,
           'text-allow-overlap': true,
           'text-anchor': 'bottom',
-          'text-offset': [0, -2 * iconScale],
+          'text-offset': [0, -2.2],
           'text-font': findFonts(map),
           'text-size': 12,
           'symbol-sort-key': ['get', 'id'],
@@ -237,7 +250,12 @@ const MapPositions = ({
               type: 'Point',
               coordinates: toMapCoordinates(position.longitude, position.latitude),
             },
-            properties: createFeature(devices, position, selectedPosition && selectedPosition.id),
+            properties: createFeature(
+              devices,
+              position,
+              selectedPosition && selectedPosition.id,
+              source === selected,
+            ),
           })),
       });
     });

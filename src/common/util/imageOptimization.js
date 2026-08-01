@@ -169,10 +169,12 @@ export const optimizeDeviceImage = async (
     decode = decodeBrowserImage,
     encode = encodeWebp,
     detectAnimatedGif = isAnimatedGif,
+    acceptedTypes = acceptedImageTypes,
+    invalidTypeMessage = 'Selecione uma imagem JPEG, PNG, GIF ou WebP.',
   } = {},
 ) => {
-  if (!file || !acceptedImageTypes.has(file.type)) {
-    throw new ImageOptimizationError('Selecione uma imagem JPEG, PNG, GIF ou WebP.');
+  if (!file || !acceptedTypes.has(file.type)) {
+    throw new ImageOptimizationError(invalidTypeMessage);
   }
 
   let decoded;

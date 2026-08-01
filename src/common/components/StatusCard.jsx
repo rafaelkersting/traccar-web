@@ -14,7 +14,6 @@ import {
   TableCell,
   Menu,
   MenuItem,
-  CardMedia,
   TableFooter,
   Link,
   Tooltip,
@@ -36,6 +35,8 @@ import { devicesActions } from '../../store';
 import { useCatch, useCatchCallback } from '../../reactHelper';
 import { useAttributePreference } from '../util/preferences';
 import fetchOrThrow from '../util/fetchOrThrow';
+import DeviceImage from './DeviceImage';
+import { getDeviceImageUrl } from '../util/deviceImage';
 
 const useStyles = makeStyles()((theme, { desktopPadding }) => ({
   card: {
@@ -50,11 +51,31 @@ const useStyles = makeStyles()((theme, { desktopPadding }) => ({
     color: theme.palette.text.secondary,
   },
   media: {
-    height: theme.dimensions.popupImageHeight,
-    '& > div': {
-      color: theme.palette.common.white,
-      mixBlendMode: 'difference',
-    },
+    position: 'relative',
+    height: 128,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    backgroundColor: theme.palette.background.paper,
+  },
+  mediaImage: {
+    display: 'block',
+    width: 'auto',
+    height: 'auto',
+    maxWidth: '100%',
+    maxHeight: 120,
+    objectFit: 'contain',
+    objectPosition: 'center',
+  },
+  mediaHeader: {
+    position: 'absolute',
+    zIndex: 1,
+    top: 0,
+    left: 0,
+    right: 0,
+    color: theme.palette.common.white,
+    mixBlendMode: 'difference',
   },
   content: {
     paddingTop: theme.spacing(1),
@@ -130,6 +151,7 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
   const device = useSelector((state) => state.devices.items[deviceId]);
 
   const deviceImage = device?.attributes?.deviceImage;
+  const deviceImageUrl = getDeviceImageUrl(device);
 
   const positionAttributes = usePositionAttributes(t);
   const positionItems = useAttributePreference(
@@ -182,11 +204,15 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
             style={{ position: 'relative' }}
           >
             <Card elevation={3} className={classes.card}>
-              <CardMedia
-                className={`draggable-header ${deviceImage ? classes.media : ''}`}
-                image={deviceImage && `/api/media/${device.uniqueId}/${deviceImage}`}
-              >
-                <div className={classes.header}>
+              <div className={`draggable-header ${deviceImage ? classes.media : ''}`}>
+                {deviceImage && (
+                  <DeviceImage
+                    src={deviceImageUrl}
+                    className={classes.mediaImage}
+                    alt={`Imagem do veículo ${device.name}`}
+                  />
+                )}
+                <div className={`${classes.header} ${deviceImage ? classes.mediaHeader : ''}`}>
                   <Typography variant="body2" color="inherit">
                     {device.name}
                   </Typography>
@@ -194,7 +220,7 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
                     <CloseIcon fontSize="small" />
                   </IconButton>
                 </div>
-              </CardMedia>
+              </div>
               {position && (
                 <CardContent className={classes.content}>
                   <Table size="small" className={classes.table}>

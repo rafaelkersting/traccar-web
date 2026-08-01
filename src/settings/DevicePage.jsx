@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
 import {
   Accordion,
@@ -10,6 +11,8 @@ import {
   TextField,
   Button,
   Alert,
+  Box,
+  Snackbar,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FileInput from '../common/components/FileInput';
@@ -25,11 +28,25 @@ import useCommonDeviceAttributes from '../common/attributes/useCommonDeviceAttri
 import useSettingsStyles from './common/useSettingsStyles';
 import QrCodeDialog from '../common/components/QrCodeDialog';
 import fetchOrThrow from '../common/util/fetchOrThrow';
-import { formatImageSize, optimizeDeviceImage } from '../common/util/imageOptimization';
+import { optimizeDeviceImage } from '../common/util/imageOptimization';
+import {
+  deleteDeviceImage,
+  getDeviceImageUrl,
+  uploadDeviceImage,
+} from '../common/util/deviceImage';
+import { devicesActions } from '../store';
+import {
+  getMapMarkerUrl,
+  mapMarkerAttribute,
+  optimizeMapMarkerImage,
+  removeMapMarkerImage,
+  versionMapMarkerImage,
+} from '../common/util/mapMarkerImage';
 
 const DevicePage = () => {
   const { classes } = useSettingsStyles();
   const t = useTranslation();
+  const dispatch = useDispatch();
 
   const manager = useManager();
 
@@ -44,14 +61,26 @@ const DevicePage = () => {
   const [imageFile, setImageFile] = useState(null);
   const [imageStatus, setImageStatus] = useState(null);
   const [optimizingImage, setOptimizingImage] = useState(false);
+  const [removingImage, setRemovingImage] = useState(false);
+  const [markerFile, setMarkerFile] = useState(null);
+  const [markerPreview, setMarkerPreview] = useState(null);
+  const [markerStatus, setMarkerStatus] = useState(null);
+  const [optimizingMarker, setOptimizingMarker] = useState(false);
+
+  const deviceImageUrl = getDeviceImageUrl(item);
+
+  useEffect(
+    () => () => {
+      if (markerPreview) {
+        URL.revokeObjectURL(markerPreview);
+      }
+    },
+    [markerPreview],
+  );
 
   const handleFileInput = async (newFile) => {
     if (!newFile) {
       setImageFile(null);
-      setImageStatus(null);
-      // eslint-disable-next-line no-unused-vars
-      const { deviceImage, ...remainingAttributes } = item.attributes || {};
-      setItem({ ...item, attributes: remainingAttributes });
       return;
     }
 
@@ -60,31 +89,129 @@ const DevicePage = () => {
     try {
       const result = await optimizeDeviceImage(newFile);
       if (item?.id) {
-        const response = await fetchOrThrow(`/api/devices/${item.id}/image`, {
-          method: 'POST',
-          body: result.file,
-        });
-        setItem({
-          ...item,
-          attributes: { ...item.attributes, deviceImage: await response.text() },
-        });
+        const updatedItem = await uploadDeviceImage(item, result.file);
+        setItem(updatedItem);
+        dispatch(devicesActions.update([updatedItem]));
       }
-      setImageFile(result.file);
+      setImageFile(null);
       setImageStatus({
         severity: 'success',
-        message: `Imagem otimizada com sucesso: ${formatImageSize(result.originalSize)} → ${formatImageSize(result.finalSize)}.`,
+        message: 'Imagem do card atualizada com sucesso.',
       });
-    } catch (error) {
+    } catch {
+      setImageFile(null);
       setImageStatus({
         severity: 'error',
-        message: `Não foi possível processar e enviar a imagem. ${error.message}`,
+        message: 'Não foi possível atualizar a imagem do card.',
       });
     } finally {
       setOptimizingImage(false);
     }
   };
 
-  const validate = () => item && item.name && item.uniqueId;
+  const handleRemoveImage = async () => {
+    setRemovingImage(false);
+    setOptimizingImage(true);
+    try {
+      const updatedItem = await deleteDeviceImage(item);
+      setItem(updatedItem);
+      dispatch(devicesActions.update([updatedItem]));
+      setImageFile(null);
+      setImageStatus({
+        severity: 'success',
+        message: 'Imagem do card removida com sucesso.',
+      });
+    } catch {
+      setImageStatus({
+        severity: 'error',
+        message: 'Não foi possível remover a imagem do card.',
+      });
+    } finally {
+      setOptimizingImage(false);
+    }
+  };
+
+  const uploadMapMarker = async (deviceId, file) => {
+    const response = await fetchOrThrow(`/api/devices/${deviceId}/marker`, {
+      method: 'POST',
+      body: file,
+    });
+    return versionMapMarkerImage(await response.text());
+  };
+
+  const handleMarkerInput = async (newFile) => {
+    if (!newFile) {
+      setMarkerFile(null);
+      setMarkerPreview(null);
+      setItem({ ...item, attributes: removeMapMarkerImage(item.attributes) });
+      setMarkerStatus({
+        severity: 'success',
+        message: 'Imagem removida. O sistema voltou a usar o ícone padrão da categoria.',
+      });
+      return;
+    }
+
+    setOptimizingMarker(true);
+    setMarkerStatus({ severity: 'info', message: 'Otimizando imagem...' });
+    try {
+      const result = await optimizeMapMarkerImage(newFile);
+      setMarkerFile(result.file);
+      setMarkerPreview(URL.createObjectURL(result.file));
+
+      if (item?.id) {
+        const marker = await uploadMapMarker(item.id, result.file);
+        setItem({
+          ...item,
+          attributes: { ...item.attributes, [mapMarkerAttribute]: marker },
+        });
+        setMarkerStatus({
+          severity: 'success',
+          message: 'Imagem do marcador salva com sucesso.',
+        });
+      } else {
+        setMarkerStatus({
+          severity: 'success',
+          message: 'Imagem do marcador pronta para ser salva.',
+        });
+      }
+    } catch {
+      setMarkerFile(null);
+      setMarkerPreview(null);
+      setMarkerStatus({ severity: 'error', message: 'Erro ao processar imagem.' });
+    } finally {
+      setOptimizingMarker(false);
+    }
+  };
+
+  const handleRemoveMarker = () => {
+    setMarkerFile(null);
+    setMarkerPreview(null);
+    setItem({ ...item, attributes: removeMapMarkerImage(item.attributes) });
+    setMarkerStatus({
+      severity: 'success',
+      message: 'Imagem removida. O sistema voltou a usar o ícone padrão da categoria.',
+    });
+  };
+
+  const handleItemSaved = async (savedItem) => {
+    let updatedItem = savedItem;
+    if (markerFile && !item.id) {
+      const marker = await uploadMapMarker(savedItem.id, markerFile);
+      const response = await fetchOrThrow(`/api/devices/${savedItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...savedItem,
+          attributes: { ...savedItem.attributes, [mapMarkerAttribute]: marker },
+        }),
+      });
+      updatedItem = await response.json();
+    }
+    dispatch(devicesActions.update([updatedItem]));
+  };
+
+  const validate = () =>
+    item && item.name && item.uniqueId && !optimizingImage && !optimizingMarker;
 
   return (
     <EditItemView
@@ -92,6 +219,7 @@ const DevicePage = () => {
       item={item}
       setItem={setItem}
       validate={validate}
+      onItemSaved={handleItemSaved}
       menu={<SettingsMenu />}
       breadcrumbs={['settingsTitle', 'sharedDevice']}
     >
@@ -188,11 +316,16 @@ const DevicePage = () => {
           {item.id && (
             <Accordion>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1">{t('attributeDeviceImage')}</Typography>
+                <Typography variant="subtitle1">Imagem do Card do Dispositivo</Typography>
               </AccordionSummary>
               <AccordionDetails className={classes.details}>
+                <Typography variant="body2" color="textSecondary">
+                  Esta imagem será exibida no card de informações do veículo no mapa.
+                </Typography>
                 <FileInput
-                  placeholder={t('attributeDeviceImage')}
+                  placeholder={
+                    deviceImageUrl ? 'Trocar imagem do card' : 'Selecionar imagem do card'
+                  }
                   value={imageFile}
                   onChange={handleFileInput}
                   slotProps={{
@@ -202,6 +335,35 @@ const DevicePage = () => {
                     },
                   }}
                 />
+                {deviceImageUrl && (
+                  <>
+                    <Typography variant="caption" color="textSecondary" align="center">
+                      Imagem cadastrada no card
+                    </Typography>
+                    <Box
+                      component="img"
+                      src={deviceImageUrl}
+                      alt="Pré-visualização da imagem do card do dispositivo"
+                      sx={{
+                        maxWidth: '100%',
+                        maxHeight: 120,
+                        width: 'auto',
+                        height: 'auto',
+                        objectFit: 'contain',
+                        objectPosition: 'center',
+                        alignSelf: 'center',
+                      }}
+                    />
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      onClick={() => setRemovingImage(true)}
+                      disabled={optimizingImage}
+                    >
+                      Remover imagem do card
+                    </Button>
+                  </>
+                )}
                 {imageStatus && (
                   <Alert severity={imageStatus.severity} aria-live="polite">
                     {imageStatus.message}
@@ -210,6 +372,50 @@ const DevicePage = () => {
               </AccordionDetails>
             </Accordion>
           )}
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="subtitle1">Ícone do Veículo no Mapa</Typography>
+            </AccordionSummary>
+            <AccordionDetails className={classes.details}>
+              <FileInput
+                placeholder="Selecionar imagem do marcador"
+                value={markerFile}
+                onChange={handleMarkerInput}
+                slotProps={{
+                  htmlInput: {
+                    accept: 'image/jpeg,image/png,image/webp',
+                    disabled: optimizingMarker,
+                  },
+                }}
+              />
+              {(markerPreview || getMapMarkerUrl(item)) && (
+                <Box
+                  component="img"
+                  src={markerPreview || getMapMarkerUrl(item)}
+                  alt="Pré-visualização do marcador do veículo"
+                  sx={{
+                    width: 80,
+                    height: 80,
+                    objectFit: 'contain',
+                    alignSelf: 'center',
+                  }}
+                />
+              )}
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={handleRemoveMarker}
+                disabled={!markerFile && !item.attributes?.[mapMarkerAttribute]}
+              >
+                Remover imagem do marcador
+              </Button>
+              {markerStatus && (
+                <Alert severity={markerStatus.severity} aria-live="polite">
+                  {markerStatus.message}
+                </Alert>
+              )}
+            </AccordionDetails>
+          </Accordion>
           <EditAttributesAccordion
             attributes={item.attributes}
             setAttributes={(attributes) => setItem({ ...item, attributes })}
@@ -217,6 +423,21 @@ const DevicePage = () => {
           />
         </>
       )}
+      <Snackbar
+        open={removingImage}
+        onClose={() => setRemovingImage(false)}
+        message="Deseja remover a imagem do card deste dispositivo?"
+        action={
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button size="small" color="inherit" onClick={() => setRemovingImage(false)}>
+              Cancelar
+            </Button>
+            <Button size="small" color="error" onClick={handleRemoveImage}>
+              Remover
+            </Button>
+          </Box>
+        }
+      />
       <QrCodeDialog open={showQr} onClose={() => setShowQr(false)} />
     </EditItemView>
   );
