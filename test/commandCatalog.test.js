@@ -3,8 +3,10 @@ import test from 'node:test';
 import {
   getCommandResultMessage,
   getCriticalCommandSafety,
+  getEligibleCatalogUsers,
   groupQuickCommands,
   isSystemCommand,
+  parseCatalogIds,
 } from '../src/settings/commandCatalog.js';
 
 const command = (type, category, order = 0, critical = false) => ({
@@ -52,4 +54,46 @@ test('avisa quando a última posição é antiga sem afirmar resultado físico',
   assert.equal(result.stale, true);
   assert.match(getCommandResultMessage(200), /Solicitação aceita/);
   assert.match(getCommandResultMessage(202), /enfileirado/);
+});
+
+const users = [
+  { id: 1, profile: 'administrator', groupIds: [10] },
+  { id: 2, profile: 'manager', groupIds: [20] },
+  { id: 3, profile: 'client', groupIds: [10] },
+  { id: 4, profile: 'manager', groupIds: [10], disabled: true },
+];
+
+test('filtra usuários pelos perfis e ignora desativados', () => {
+  const result = getEligibleCatalogUsers(users, {
+    systemDefaultProfiles: 'administrator,manager',
+    systemDefaultUserScope: 'all',
+  });
+  assert.deepEqual(
+    result.map((user) => user.id),
+    [1, 2],
+  );
+});
+
+test('filtra usuários específicos e por grupos sem duplicar ids', () => {
+  assert.deepEqual(parseCatalogIds('1, 2, 1, inválido'), [1, 2]);
+  assert.deepEqual(
+    getEligibleCatalogUsers(users, {
+      systemDefaultProfiles: 'administrator,manager,client',
+      systemDefaultUserScope: 'users',
+      systemDefaultUserIds: '2,3',
+    }).map((user) => user.id),
+    [2, 3],
+  );
+  assert.deepEqual(
+    getEligibleCatalogUsers(users, {
+      systemDefaultProfiles: 'administrator,manager,client',
+      systemDefaultUserScope: 'groups',
+      systemDefaultUserGroupIds: '10',
+    }).map((user) => user.id),
+    [1, 3],
+  );
+});
+
+test('não considera usuários quando nenhum perfil está selecionado', () => {
+  assert.deepEqual(getEligibleCatalogUsers(users, { systemDefaultProfiles: '' }), []);
 });

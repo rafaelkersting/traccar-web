@@ -9,6 +9,51 @@ export const systemCommandKeys = {
   profiles: 'systemDefaultProfiles',
   category: 'systemDefaultCategory',
   summary: 'systemDefaultSummary',
+  userScope: 'systemDefaultUserScope',
+  userIds: 'systemDefaultUserIds',
+  userGroupIds: 'systemDefaultUserGroupIds',
+  deviceScope: 'systemDefaultDeviceScope',
+  deviceIds: 'systemDefaultDeviceIds',
+  deviceGroupIds: 'systemDefaultDeviceGroupIds',
+};
+
+export const catalogProfiles = [
+  { id: 'administrator', title: 'Administrador' },
+  { id: 'manager', title: 'Gestor' },
+  { id: 'client', title: 'Cliente' },
+];
+
+export const parseCatalogIds = (value) =>
+  String(value || '')
+    .split(',')
+    .map((item) => Number(item.trim()))
+    .filter(
+      (item, index, values) => Number.isInteger(item) && item > 0 && values.indexOf(item) === index,
+    );
+
+export const serializeCatalogIds = (ids = []) =>
+  [...new Set(ids.map(Number))].filter(Boolean).join(',');
+
+export const getEligibleCatalogUsers = (users = [], attributes = {}) => {
+  const profiles = String(attributes[systemCommandKeys.profiles] || '')
+    .split(',')
+    .map((profile) => profile.trim())
+    .filter(Boolean);
+  const scope = attributes[systemCommandKeys.userScope] || 'all';
+  const userIds = parseCatalogIds(attributes[systemCommandKeys.userIds]);
+  const groupIds = parseCatalogIds(attributes[systemCommandKeys.userGroupIds]);
+  return users.filter((user) => {
+    if (user.disabled || user.readonly || user.temporary || !profiles.includes(user.profile)) {
+      return false;
+    }
+    if (scope === 'users') {
+      return userIds.includes(user.id);
+    }
+    if (scope === 'groups') {
+      return user.groupIds?.some((groupId) => groupIds.includes(groupId));
+    }
+    return true;
+  });
 };
 
 export const commandCategories = [
