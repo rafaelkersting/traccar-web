@@ -20,11 +20,11 @@ import {
 } from '@mui/material';
 import { makeStyles } from 'tss-react/mui';
 import CloseIcon from '@mui/icons-material/Close';
-import RouteIcon from '@mui/icons-material/Route';
-import SendIcon from '@mui/icons-material/Send';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PendingIcon from '@mui/icons-material/Pending';
+import HistoryIcon from '@mui/icons-material/History';
+import SendIcon from '@mui/icons-material/Send';
 
 import { useTranslation } from './LocalizationProvider';
 import RemoveDialog from './RemoveDialog';
@@ -37,6 +37,7 @@ import { useAttributePreference } from '../util/preferences';
 import fetchOrThrow from '../util/fetchOrThrow';
 import DeviceImage from './DeviceImage';
 import { getDeviceImageUrl } from '../util/deviceImage';
+import QuickDeviceActions from './QuickDeviceActions';
 
 const useStyles = makeStyles()((theme, { desktopPadding }) => ({
   card: {
@@ -277,39 +278,9 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
                     <PendingIcon />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title={t('reportReplay')}>
-                  <IconButton
-                    onClick={() => navigate(`/replay?deviceId=${deviceId}`)}
-                    disabled={disableActions || !position}
-                  >
-                    <RouteIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title={t('commandTitle')}>
-                  <IconButton
-                    onClick={() => navigate(`/settings/device/${deviceId}/command`)}
-                    disabled={disableActions}
-                  >
-                    <SendIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title={t('sharedEdit')}>
-                  <IconButton
-                    onClick={() => navigate(`/settings/device/${deviceId}`)}
-                    disabled={disableActions || deviceReadonly}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title={t('sharedRemove')}>
-                  <IconButton
-                    color="error"
-                    onClick={() => setRemoving(true)}
-                    disabled={disableActions || deviceReadonly}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
+                {!disableActions && (
+                  <QuickDeviceActions device={device} position={position} card showMore={false} />
+                )}
               </CardActions>
             </Card>
           </Rnd>
@@ -317,6 +288,14 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
       </div>
       {position && (
         <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+          <MenuItem onClick={() => navigate(`/replay?deviceId=${deviceId}`)}>
+            <HistoryIcon fontSize="small" style={{ marginRight: 16 }} />
+            Histórico
+          </MenuItem>
+          <MenuItem onClick={() => navigate(`/settings/device/${deviceId}/command`)}>
+            <SendIcon fontSize="small" style={{ marginRight: 16 }} />
+            Comandos adicionais
+          </MenuItem>
           <MenuItem
             onClick={() => navigate(`/stream?deviceId=${deviceId}`)}
             disabled={position.protocol !== 'jt808'}
@@ -361,6 +340,17 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
               <Typography color="secondary">{t('sharedShare')}</Typography>
             </MenuItem>
           )}
+          <MenuItem
+            onClick={() => navigate(`/settings/device/${deviceId}`)}
+            disabled={disableActions || deviceReadonly}
+          >
+            <EditIcon fontSize="small" style={{ marginRight: 16 }} />
+            {t('sharedEdit')}
+          </MenuItem>
+          <MenuItem onClick={() => setRemoving(true)} disabled={disableActions || deviceReadonly}>
+            <DeleteIcon fontSize="small" style={{ marginRight: 16 }} />
+            {t('sharedRemove')}
+          </MenuItem>
         </Menu>
       )}
       <RemoveDialog
