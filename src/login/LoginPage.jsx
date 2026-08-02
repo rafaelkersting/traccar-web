@@ -10,12 +10,17 @@ import {
   Snackbar,
   IconButton,
   Tooltip,
+  Typography,
+  InputAdornment,
 } from '@mui/material';
 import CountryFlag from 'react-country-flag';
 import { makeStyles } from 'tss-react/mui';
 import CloseIcon from '@mui/icons-material/Close';
 import VpnLockIcon from '@mui/icons-material/VpnLock';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useTheme } from '@mui/material/styles';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -42,6 +47,22 @@ const useStyles = makeStyles()((theme) => ({
     display: 'flex',
     flexDirection: 'row',
     gap: theme.spacing(1),
+    zIndex: 3,
+    padding: theme.systemTheme.id === 'classic' ? 0 : theme.spacing(0.5),
+    border:
+      theme.systemTheme.id === 'classic'
+        ? 'none'
+        : `1px solid ${theme.systemTheme.login.cardBorder}`,
+    borderRadius: theme.systemTheme.shape.inputRadius,
+    background:
+      theme.systemTheme.id === 'classic' ? 'transparent' : theme.systemTheme.login.cardBackground,
+    backdropFilter: theme.systemTheme.login.cardBackdrop,
+    [theme.breakpoints.down('sm')]: {
+      top: theme.spacing(1),
+      right: theme.spacing(1),
+      transform: 'scale(0.9)',
+      transformOrigin: 'top right',
+    },
   },
   container: {
     display: 'flex',
@@ -54,6 +75,42 @@ const useStyles = makeStyles()((theme) => ({
     justifyContent: 'center',
     gap: theme.spacing(4),
     marginTop: theme.spacing(2),
+  },
+  welcome: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginBottom: theme.spacing(1.5),
+    textAlign: 'center',
+  },
+  lockBadge: {
+    display: 'grid',
+    placeItems: 'center',
+    width: 64,
+    height: 64,
+    marginBottom: theme.spacing(2),
+    color: theme.palette.primary.main,
+    border: `1px solid ${theme.systemTheme.login.cardBorder}`,
+    borderRadius: '50%',
+    backgroundColor:
+      theme.palette.mode === 'dark' ? 'rgba(24, 55, 102, 0.58)' : 'rgba(255, 255, 255, 0.82)',
+    boxShadow: theme.systemTheme.effects.glow,
+  },
+  welcomeTitle: {
+    fontWeight: 750,
+    letterSpacing: '-0.025em',
+  },
+  welcomeSubtitle: {
+    marginTop: theme.spacing(0.5),
+    color: theme.palette.text.secondary,
+  },
+  compactBrand: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: theme.spacing(0.5),
+    [theme.breakpoints.down('sm')]: {
+      marginTop: theme.systemTheme.id === 'classic' ? 0 : theme.spacing(5),
+    },
   },
   registerButton: {
     minWidth: 'unset',
@@ -72,6 +129,9 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const t = useTranslation();
+  const showCompactBrand = useMediaQuery(
+    theme.breakpoints.down(theme.systemTheme.id === 'classic' ? 'lg' : 'md'),
+  );
 
   const { languages, language, setLocalLanguage } = useLocalization();
   const languageList = Object.entries(languages).map((values) => ({
@@ -199,8 +259,29 @@ const LoginPage = () => {
         )}
       </div>
       <div className={classes.container}>
-        {useMediaQuery(theme.breakpoints.down('lg')) && (
-          <LogoImage color={theme.palette.primary.main} />
+        {showCompactBrand && (
+          <div className={classes.compactBrand}>
+            <LogoImage
+              color={
+                theme.systemTheme.id === 'classic'
+                  ? theme.palette.primary.main
+                  : theme.palette.text.primary
+              }
+            />
+          </div>
+        )}
+        {theme.systemTheme.id !== 'classic' && (
+          <div className={classes.welcome}>
+            <div className={classes.lockBadge}>
+              <LockOutlinedIcon fontSize="large" />
+            </div>
+            <Typography className={classes.welcomeTitle} variant="h4">
+              Bem-vindo de volta
+            </Typography>
+            <Typography className={classes.welcomeSubtitle} variant="body2">
+              Acesse sua conta para continuar
+            </Typography>
+          </div>
         )}
         {!openIdForced && (
           <>
@@ -214,6 +295,15 @@ const LoginPage = () => {
               autoFocus={!email}
               onChange={(e) => setEmail(e.target.value)}
               helperText={failed && 'Invalid username or password'}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <EmailOutlinedIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
             <PasswordField
               required
@@ -224,6 +314,15 @@ const LoginPage = () => {
               autoComplete="current-password"
               autoFocus={!!email}
               onChange={(e) => setPassword(e.target.value)}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockOutlinedIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
             {codeEnabled && (
               <TextField
@@ -241,6 +340,7 @@ const LoginPage = () => {
               type="submit"
               variant="contained"
               color="secondary"
+              endIcon={theme.systemTheme.id === 'classic' ? null : <ArrowForwardIcon />}
               disabled={!email || !password || (codeEnabled && !code)}
             >
               {t('loginLogin')}

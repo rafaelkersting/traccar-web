@@ -8,6 +8,14 @@
     <link rel="icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" sizes="180x180" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <script>
+      try {
+        const storedTheme = localStorage.getItem('kersting.systemTheme') || 'classic';
+        document.documentElement.dataset.systemTheme = storedTheme;
+      } catch {
+        document.documentElement.dataset.systemTheme = 'classic';
+      }
+    </script>
     <link rel="stylesheet" href="/styles.css">
     <title>${title}</title>
     <style>

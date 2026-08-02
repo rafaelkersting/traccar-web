@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync, statSync } from 'node:fs';
 import test from 'node:test';
 import {
   DEFAULT_SYSTEM_THEME,
@@ -28,10 +29,52 @@ test('todos os templates possuem tokens centrais obrigatórios', () => {
     assert.match(item.colors.primary, /^#[0-9a-f]{6}$/i);
     assert.match(item.colors.secondary, /^#[0-9a-f]{6}$/i);
     assert.ok(item.effects.loginGradient);
-    assert.ok(item.effects.mapFilter);
+    assert.ok(item.login.backgroundImage);
+    assert.ok(item.login.backgroundPosition);
+    assert.ok(item.login.cardBackground);
+    assert.ok(item.login.cardBorder);
+    assert.ok(item.login.brandColor);
+    assert.ok(item.login.brandAccent);
+    assert.ok(item.login.tagline);
+    assert.equal('mapFilter' in item.effects, false);
     assert.ok(item.shape.cardRadius > 0);
     assert.ok(item.layout.sidebarWidth > 0);
   });
+});
+
+test('quatro templates personalizados possuem fundos de login próprios', () => {
+  const customThemes = SYSTEM_THEMES.filter((item) => item.id !== DEFAULT_SYSTEM_THEME);
+  const backgrounds = customThemes.map((item) => item.login.backgroundImage);
+
+  assert.equal(new Set(backgrounds).size, 4);
+  backgrounds.forEach((background) => assert.match(background, /^url\('\/login\/.+\.webp'\)$/));
+  assert.equal(getSystemTheme(DEFAULT_SYSTEM_THEME).login.backgroundImage, 'none');
+});
+
+test('fundos de login existem, são leves e o tema é preparado antes do React', () => {
+  const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../public/styles.css', import.meta.url), 'utf8');
+
+  assert.ok(
+    index.indexOf("localStorage.getItem('kersting.systemTheme')") < index.indexOf('/src/index.jsx'),
+  );
+  SYSTEM_THEMES.filter((item) => item.id !== DEFAULT_SYSTEM_THEME).forEach((item) => {
+    const assetName = item.login.backgroundImage.match(/\/login\/(.+\.webp)/)?.[1];
+    assert.ok(assetName);
+    assert.ok(statSync(new URL(`../public/login/${assetName}`, import.meta.url)).size < 150_000);
+    assert.match(styles, new RegExp(`data-system-theme='${item.id}'`));
+  });
+});
+
+test('templates não alteram a aparência do canvas do mapa', () => {
+  const mapStyles = readFileSync(new URL('../src/map/core/MapView.css', import.meta.url), 'utf8');
+
+  assert.match(mapStyles, /\.map-view-root \.maplibregl-canvas/);
+  assert.match(mapStyles, /filter: none !important/);
+  assert.match(mapStyles, /opacity: 1 !important/);
+  assert.match(mapStyles, /mix-blend-mode: normal !important/);
+  assert.match(mapStyles, /backdrop-filter: none !important/);
+  assert.match(mapStyles, /background: transparent !important/);
 });
 
 test('identificador inválido restaura o tema padrão', () => {

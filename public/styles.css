@@ -7,6 +7,26 @@ body {
   padding: 0;
 }
 
+html[data-system-theme='darkModern'] body,
+html[data-system-theme='darkModern'] .root {
+  background: #07111f url('/login/dark-modern.webp') center / cover no-repeat fixed;
+}
+
+html[data-system-theme='lightClean'] body,
+html[data-system-theme='lightClean'] .root {
+  background: #f5f7fc url('/login/light-clean.webp') center / cover no-repeat fixed;
+}
+
+html[data-system-theme='futuristicGradient'] body,
+html[data-system-theme='futuristicGradient'] .root {
+  background: #0b1024 url('/login/futuristic-gradient.webp') center / cover no-repeat fixed;
+}
+
+html[data-system-theme='professionalDashboard'] body,
+html[data-system-theme='professionalDashboard'] .root {
+  background: #092f37 url('/login/professional-dashboard.webp') center / cover no-repeat fixed;
+}
+
 @media (prefers-color-scheme: dark) {
   body {
     background: black;
