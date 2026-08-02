@@ -11,6 +11,7 @@ import usePersistedState from '../../common/util/usePersistedState';
 import { mapImages } from './preloadImages';
 import useMapStyles from './useMapStyles';
 import { useAsyncTask } from '../../reactHelper';
+import './MapView.css';
 
 const element = document.createElement('div');
 element.style.width = '100%';
@@ -141,11 +142,7 @@ const MapView = ({ children }) => {
   }, [containerRef]);
 
   return (
-    <div
-      style={{ width: '100%', height: '100%', backgroundColor: theme.palette.background.default }}
-      data-map-theme={theme.systemTheme.id}
-      ref={containerRef}
-    >
+    <div className="map-view-root" ref={containerRef}>
       <MapSwitcher styles={styles} selectedId={selectedStyleId} onSelect={setSelectedStyleId} />
       {mapReady && children}
     </div>

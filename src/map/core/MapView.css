@@ -1,0 +1,28 @@
+.map-view-root {
+  width: 100%;
+  height: 100%;
+  isolation: isolate;
+  background: transparent !important;
+  filter: none !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+  backdrop-filter: none !important;
+}
+
+.map-view-root::before,
+.map-view-root::after,
+.map-view-root > .maplibregl-map::before,
+.map-view-root > .maplibregl-map::after {
+  display: none !important;
+  content: none !important;
+}
+
+.map-view-root > .maplibregl-map,
+.map-view-root .maplibregl-canvas-container,
+.map-view-root .maplibregl-canvas {
+  background: transparent !important;
+  filter: none !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+  backdrop-filter: none !important;
+}

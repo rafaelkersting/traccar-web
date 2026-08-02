@@ -65,13 +65,6 @@ export default (systemTheme) => {
         '::selection': {
           backgroundColor: translucent(theme.palette.primary.main, 0.28),
         },
-        '.maplibregl-map': {
-          backgroundColor: theme.palette.background.default,
-        },
-        '.maplibregl-canvas': {
-          filter: systemTheme.effects.mapFilter,
-          transition: 'filter 220ms ease',
-        },
         '.maplibregl-ctrl-group': {
           overflow: 'hidden',
           border: `1px solid ${theme.palette.divider}`,
