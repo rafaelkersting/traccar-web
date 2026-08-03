@@ -33,15 +33,7 @@ const commandUnavailable =
   'Comando não configurado, não autorizado ou não suportado por este rastreador';
 
 const ActionButton = ({ title, disabled, onClick, children }) => (
-  <Tooltip
-    title={
-      disabled
-        ? title === 'Localizar veículo no mapa'
-          ? 'Dispositivo sem posição'
-          : commandUnavailable
-        : title
-    }
-  >
+  <Tooltip title={disabled ? `${title}: ${commandUnavailable}` : title}>
     <span>
       <IconButton
         size="small"
@@ -164,7 +156,7 @@ const QuickDeviceActions = ({
 
   return (
     <>
-      <ActionButton title="Localizar veículo no mapa" disabled={!position} onClick={locate}>
+      <ActionButton title="Localizar veículo no mapa" onClick={locate}>
         <MyLocationIcon fontSize="small" />
       </ActionButton>
       {showQuickButtons && (

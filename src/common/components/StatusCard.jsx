@@ -37,7 +37,7 @@ import { useAttributePreference } from '../util/preferences';
 import fetchOrThrow from '../util/fetchOrThrow';
 import DeviceImage from './DeviceImage';
 import { getDeviceImageUrl } from '../util/deviceImage';
-import QuickDeviceActions from './QuickDeviceActions';
+import VehicleStatusActions from './VehicleStatusActions';
 
 const useStyles = makeStyles()((theme, { desktopPadding }) => ({
   card: {
@@ -269,8 +269,9 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
                 </CardContent>
               )}
               <CardActions className={classes.actions} disableSpacing>
-                <Tooltip title={t('sharedExtra')}>
+                <Tooltip title="Mais ações">
                   <IconButton
+                    aria-label="Mais ações"
                     color="secondary"
                     onClick={(e) => setAnchorEl(e.currentTarget)}
                     disabled={!position}
@@ -279,7 +280,7 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
                   </IconButton>
                 </Tooltip>
                 {!disableActions && (
-                  <QuickDeviceActions device={device} position={position} card showMore={false} />
+                  <VehicleStatusActions device={device} position={position} variant="card" />
                 )}
               </CardActions>
             </Card>
