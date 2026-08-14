@@ -15,6 +15,7 @@ import DriverValue from '../common/components/DriverValue';
 import MotionBar from './components/MotionBar';
 import { getDeviceImageUrl } from '../common/util/deviceImage';
 import VehicleStatusActions from '../common/components/VehicleStatusActions';
+import DeviceImage from '../common/components/DeviceImage';
 
 dayjs.extend(relativeTime);
 
@@ -25,8 +26,9 @@ const useStyles = makeStyles()((theme) => ({
     filter: 'brightness(0) invert(1)',
   },
   thumbnail: {
-    width: 40,
-    height: 40,
+    display: 'block',
+    width: 36,
+    height: 36,
     objectFit: 'contain',
     objectPosition: 'center',
   },
@@ -136,11 +138,15 @@ const DeviceRow = ({ devices, index, style }) => {
           <div className={classes.header}>
             <ListItemAvatar>
               <Avatar>
-                <img
-                  className={deviceImageUrl ? classes.thumbnail : classes.icon}
-                  src={deviceImageUrl || mapIcons[mapIconKey(item.category)]}
-                  alt={deviceImageUrl ? `Imagem de ${item.name}` : ''}
-                />
+                {deviceImageUrl ? (
+                  <DeviceImage
+                    className={classes.thumbnail}
+                    src={deviceImageUrl}
+                    alt={`Imagem de ${item.name}`}
+                  />
+                ) : (
+                  <img className={classes.icon} src={mapIcons[mapIconKey(item.category)]} alt="" />
+                )}
               </Avatar>
             </ListItemAvatar>
             <ListItemText
