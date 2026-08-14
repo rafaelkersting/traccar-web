@@ -50,18 +50,26 @@ const useStyles = makeStyles()((theme, { desktopPadding }) => ({
   header: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: theme.spacing(1, 1, 0, 2),
+    alignItems: 'flex-start',
+    minHeight: 36,
+    padding: theme.spacing(1, 1, 0.75, 2),
     color: theme.palette.text.secondary,
     backgroundColor:
       theme.systemTheme.id === 'classic' ? undefined : theme.palette.background.paper,
   },
+  title: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: theme.spacing(1),
+    overflowWrap: 'anywhere',
+  },
   media: {
-    position: 'relative',
-    height: 128,
+    height: 88,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    boxSizing: 'border-box',
+    padding: theme.spacing(0.5, 2, 1),
     overflow: 'hidden',
     backgroundColor: theme.palette.background.paper,
   },
@@ -69,19 +77,10 @@ const useStyles = makeStyles()((theme, { desktopPadding }) => ({
     display: 'block',
     width: 'auto',
     height: 'auto',
-    maxWidth: '100%',
-    maxHeight: 120,
+    maxWidth: 'calc(100% - 16px)',
+    maxHeight: 76,
     objectFit: 'contain',
     objectPosition: 'center',
-  },
-  mediaHeader: {
-    position: 'absolute',
-    zIndex: 1,
-    top: 0,
-    left: 0,
-    right: 0,
-    color: theme.palette.common.white,
-    mixBlendMode: 'difference',
   },
   content: {
     paddingTop: theme.spacing(1),
@@ -213,22 +212,24 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
             style={{ position: 'relative' }}
           >
             <Card elevation={3} className={classes.card}>
-              <div className={`draggable-header ${deviceImage ? classes.media : ''}`}>
-                {deviceImage && (
-                  <DeviceImage
-                    src={deviceImageUrl}
-                    className={classes.mediaImage}
-                    alt={`Imagem do veículo ${device.name}`}
-                  />
-                )}
-                <div className={`${classes.header} ${deviceImage ? classes.mediaHeader : ''}`}>
-                  <Typography variant="body2" color="inherit">
+              <div className="draggable-header">
+                <div className={classes.header}>
+                  <Typography variant="body2" color="inherit" className={classes.title}>
                     {device.name}
                   </Typography>
                   <IconButton size="small" color="inherit" onClick={onClose} onTouchStart={onClose}>
                     <CloseIcon fontSize="small" />
                   </IconButton>
                 </div>
+                {deviceImage && (
+                  <div className={classes.media}>
+                    <DeviceImage
+                      src={deviceImageUrl}
+                      className={classes.mediaImage}
+                      alt={`Imagem do veículo ${device.name}`}
+                    />
+                  </div>
+                )}
               </div>
               {position && (
                 <CardContent className={classes.content}>
