@@ -2,18 +2,17 @@ import { Box, Tooltip, Typography } from '@mui/material';
 import BatteryFullIcon from '@mui/icons-material/BatteryFull';
 import LocalGasStationIcon from '@mui/icons-material/LocalGasStation';
 import PowerIcon from '@mui/icons-material/Power';
+import ElectricalServicesIcon from '@mui/icons-material/ElectricalServices';
 import CellTowerIcon from '@mui/icons-material/CellTower';
 import dayjs from 'dayjs';
 import QuickDeviceActions from './QuickDeviceActions';
-
-const normalizePercentage = (value) => {
-  const number = Number(value);
-  if (!Number.isFinite(number) || number < 0) {
-    return null;
-  }
-  const normalized = number <= 1 ? number * 100 : number;
-  return normalized <= 100 ? Math.round(normalized) : null;
-};
+import useVehicleTelemetry from '../util/useVehicleTelemetry';
+import {
+  formatBatteryReading,
+  formatExternalPowerReading,
+  isTelemetryReadingCurrent,
+  normalizePercentage,
+} from '../util/vehicleTelemetry';
 
 const hasValue = (value) => value !== undefined && value !== null && value !== '';
 
@@ -70,12 +69,21 @@ const getAgeText = (device) => {
 const VehicleStatusActions = ({ device, position, variant = 'list', expanded = false }) => {
   const attributes = position?.attributes || {};
   const ageText = getAgeText(device);
-  const battery = normalizePercentage(
-    attributes.batteryLevel ?? attributes.battery ?? attributes.charge,
-  );
+  const telemetry = useVehicleTelemetry(device.id, position);
+  const battery = telemetry.battery;
+  const batteryValue = formatBatteryReading(battery);
+  const batteryAge =
+    battery && !isTelemetryReadingCurrent(battery, position) && battery.timestamp
+      ? ` — última leitura ${dayjs(battery.timestamp).fromNow()}`
+      : '';
   const fuel = normalizePercentage(attributes.fuel ?? attributes.fuelLevel);
   const ignition = getBooleanAttribute(attributes.ignition);
-  const externalPower = getBooleanAttribute(attributes.externalPower, attributes.power);
+  const externalPower = telemetry.externalPower;
+  const externalPowerValue = formatExternalPowerReading(externalPower);
+  const externalPowerAge =
+    externalPower && !isTelemetryReadingCurrent(externalPower, position) && externalPower.timestamp
+      ? ` — última leitura ${dayjs(externalPower.timestamp).fromNow()}`
+      : '';
   const gpsConnected = Boolean(position);
   const compact = variant === 'list';
 
@@ -121,11 +129,14 @@ const VehicleStatusActions = ({ device, position, variant = 'list', expanded = f
         <LocalGasStationIcon fontSize="small" color={getFuelColor(fuel)} />,
       )}
       {indicator(
-        battery === null
+        batteryValue === null
           ? 'Bateria do rastreador: não informada'
-          : `Bateria do rastreador: ${battery}%${ageText}`,
-        <BatteryFullIcon fontSize="small" color={getBatteryColor(battery)} />,
-        battery === null ? '—' : `${battery}%`,
+          : `Bateria do rastreador: ${batteryValue}${batteryAge}`,
+        <BatteryFullIcon
+          fontSize="small"
+          color={battery?.kind === 'percentage' ? getBatteryColor(battery.value) : 'primary'}
+        />,
+        batteryValue || '—',
       )}
       {indicator(
         ignition === null
@@ -136,11 +147,23 @@ const VehicleStatusActions = ({ device, position, variant = 'list', expanded = f
           color={ignition === null ? 'disabled' : ignition ? 'success' : 'error'}
         />,
       )}
-      {externalPower !== null &&
-        indicator(
-          `Alimentação externa: ${externalPower ? 'conectada' : 'desconectada'}${ageText}`,
-          <PowerIcon fontSize="small" color={externalPower ? 'success' : 'error'} />,
-        )}
+      {indicator(
+        externalPowerValue === null
+          ? 'Alimentação externa: não informada'
+          : `Alimentação externa: ${externalPowerValue}${externalPowerAge}`,
+        <ElectricalServicesIcon
+          fontSize="small"
+          color={
+            externalPower?.kind === 'state'
+              ? externalPower.value
+                ? 'success'
+                : 'error'
+              : externalPower
+                ? 'primary'
+                : 'disabled'
+          }
+        />,
+      )}
       {indicator(
         `Sinal GPS: ${gpsConnected ? 'conectado' : 'desconectado'}${ageText}`,
         <CellTowerIcon fontSize="small" color={gpsConnected ? 'primary' : 'error'} />,
