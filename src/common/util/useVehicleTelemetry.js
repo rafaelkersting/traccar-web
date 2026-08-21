@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { mergeVehicleTelemetry } from './vehicleTelemetry';
 
-const storagePrefix = 'kersting.vehicleTelemetry.v1';
+const storagePrefix = 'kersting.vehicleTelemetry.v2';
 
 const getStorageKey = (userId, deviceId) => `${storagePrefix}.${userId}.${deviceId}`;
 

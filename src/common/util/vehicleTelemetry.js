@@ -1,4 +1,7 @@
-const hasValue = (value) => value !== undefined && value !== null && value !== '';
+const hasValue = (value) =>
+  value !== undefined && value !== null && (typeof value !== 'string' || value.trim() !== '');
+
+export const VEHICLE_TELEMETRY_MAX_AGE = 30 * 60 * 1000;
 
 const normalizeBoolean = (value) => {
   if (!hasValue(value)) {
@@ -23,6 +26,9 @@ const normalizeBoolean = (value) => {
 };
 
 export const normalizePercentage = (value) => {
+  if (!hasValue(value)) {
+    return null;
+  }
   const number = Number(value);
   if (!Number.isFinite(number) || number < 0) {
     return null;
@@ -32,8 +38,16 @@ export const normalizePercentage = (value) => {
 };
 
 const normalizeVoltage = (value) => {
+  if (!hasValue(value)) {
+    return null;
+  }
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : null;
+};
+
+const normalizeExternalVoltage = (value) => {
+  const voltage = normalizeVoltage(value);
+  return voltage !== null && voltage >= 6 && voltage <= 60 ? voltage : null;
 };
 
 const readingMetadata = (position) => ({
@@ -44,10 +58,12 @@ const readingMetadata = (position) => ({
 export const getBatteryReading = (position) => {
   const attributes = position?.attributes || {};
   const batteryLevel = normalizePercentage(attributes.batteryLevel);
-  if (batteryLevel !== null) {
+  const externalPowerConnected = normalizeBoolean(attributes.externalPower ?? attributes.charge);
+  const batteryVoltage = normalizeVoltage(attributes.battery);
+  const ambiguousZero = batteryLevel === 0 && externalPowerConnected === true;
+  if (batteryLevel !== null && !ambiguousZero) {
     return { kind: 'percentage', value: batteryLevel, ...readingMetadata(position) };
   }
-  const batteryVoltage = normalizeVoltage(attributes.battery);
   if (batteryVoltage !== null) {
     return { kind: 'voltage', value: batteryVoltage, ...readingMetadata(position) };
   }
@@ -60,7 +76,7 @@ export const getExternalPowerReading = (position) => {
   if (state !== null) {
     return { kind: 'state', value: state, ...readingMetadata(position) };
   }
-  const voltage = normalizeVoltage(attributes.power);
+  const voltage = normalizeExternalVoltage(attributes.power);
   if (voltage !== null) {
     return { kind: 'voltage', value: voltage, ...readingMetadata(position) };
   }
@@ -73,17 +89,49 @@ const sameReading = (first, second) =>
   first?.positionId === second?.positionId &&
   first?.timestamp === second?.timestamp;
 
-export const mergeVehicleTelemetry = (previous = {}, position) => {
+export const isTelemetryReadingExpired = (
+  reading,
+  now = Date.now(),
+  maxAge = VEHICLE_TELEMETRY_MAX_AGE,
+) => {
+  if (!reading?.timestamp) {
+    return true;
+  }
+  const timestamp = Date.parse(reading.timestamp);
+  return !Number.isFinite(timestamp) || now - timestamp > maxAge;
+};
+
+const pruneExpiredTelemetry = (telemetry, now, maxAge) => {
+  const pruned = Object.fromEntries(
+    Object.entries(telemetry).filter(
+      ([, reading]) => !isTelemetryReadingExpired(reading, now, maxAge),
+    ),
+  );
+  return Object.keys(pruned).length === Object.keys(telemetry).length ? telemetry : pruned;
+};
+
+export const mergeVehicleTelemetry = (
+  previous = {},
+  position,
+  now,
+  maxAge = VEHICLE_TELEMETRY_MAX_AGE,
+) => {
+  const positionTimestamp = Date.parse(
+    position?.serverTime || position?.deviceTime || position?.fixTime || '',
+  );
+  const referenceTime =
+    now ?? (Number.isFinite(positionTimestamp) ? positionTimestamp : Date.now());
+  const current = pruneExpiredTelemetry(previous, referenceTime, maxAge);
   const battery = getBatteryReading(position);
   const externalPower = getExternalPowerReading(position);
   if (
-    (!battery || sameReading(previous.battery, battery)) &&
-    (!externalPower || sameReading(previous.externalPower, externalPower))
+    (!battery || sameReading(current.battery, battery)) &&
+    (!externalPower || sameReading(current.externalPower, externalPower))
   ) {
-    return previous;
+    return current;
   }
   return {
-    ...previous,
+    ...current,
     ...(battery && { battery }),
     ...(externalPower && { externalPower }),
   };
