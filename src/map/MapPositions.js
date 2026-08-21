@@ -10,6 +10,12 @@ import { useCatchCallback } from '../reactHelper';
 import { findFonts, fromMapCoordinates, toMapCoordinates } from './core/mapUtil';
 import useDeviceMarkerImages from './core/useDeviceMarkerImages';
 import { resolveDeviceMarkerImage } from './core/deviceMarker';
+import {
+  createMarkerTransition,
+  isRotatableVehicleMarker,
+  resolveMarkerMotionState,
+  sampleMarkerTransition,
+} from './core/deviceMarkerMotion';
 
 const MapPositions = ({
   positions,
@@ -19,6 +25,7 @@ const MapPositions = ({
   selectedPosition,
   titleField,
   disabled,
+  animate = false,
 }) => {
   const id = useId();
   const clusters = `${id}-clusters`;
@@ -26,7 +33,9 @@ const MapPositions = ({
 
   const theme = useTheme();
   const desktop = useMediaQuery(theme.breakpoints.up('md'));
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const iconScale = useAttributePreference('iconScale', desktop ? 0.75 : 1);
+  const animationEnabled = animate && !reducedMotion;
 
   const devices = useSelector((state) => state.devices.items);
   const selectedDeviceId = useSelector((state) => state.devices.selectedId);
@@ -37,9 +46,13 @@ const MapPositions = ({
 
   const disabledRef = useRef(disabled);
   disabledRef.current = disabled;
+  const markerMotionRef = useRef(new Map());
+  const previousPositionsRef = useRef(new Map());
+  const animationFrameRef = useRef();
+  const lastAnimationFrameRef = useRef(0);
 
   const createFeature = useCallback(
-    (devices, position, selectedPositionId, selectedMarker) => {
+    (devices, position, selectedPositionId, selectedMarker, markerMotion) => {
       const device = devices[position.deviceId];
       const category = mapIconKey(device.category);
       const color = showStatus
@@ -57,6 +70,8 @@ const MapPositions = ({
           showDirection = selectedPositionId === position.id && position.course > 0;
           break;
       }
+      const customMarker = Boolean(markerImages[position.deviceId]);
+      const rotatable = isRotatableVehicleMarker(device.category, customMarker);
       return {
         id: position.id,
         deviceId: position.deviceId,
@@ -68,9 +83,11 @@ const MapPositions = ({
           markerImages,
           selectedMarker,
         ),
-        customMarker: Boolean(markerImages[position.deviceId]),
-        rotation: position.course,
-        direction: showDirection,
+        customMarker,
+        rotatable,
+        rotation: markerMotion.course,
+        direction: showDirection && !rotatable,
+        markerState: markerMotion.markerState,
       };
     },
     [directionType, markerImages, showStatus],
@@ -138,6 +155,28 @@ const MapPositions = ({
     });
     [id, selected].forEach((source) => {
       map.addLayer({
+        id: `state-${source}`,
+        type: 'circle',
+        source,
+        filter: ['!has', 'point_count'],
+        paint: {
+          'circle-radius': source === selected ? 27 : 23,
+          'circle-color': 'rgba(255, 255, 255, 0.08)',
+          'circle-stroke-color': [
+            'match',
+            ['get', 'markerState'],
+            'moving',
+            '#2e7d32',
+            'stopped',
+            '#f9a825',
+            '#757575',
+          ],
+          'circle-stroke-width': source === selected ? 3.5 : 2,
+          'circle-opacity': ['case', ['==', ['get', 'markerState'], 'offline'], 0.65, 0.95],
+          'circle-blur': 0.05,
+        },
+      });
+      map.addLayer({
         id: source,
         type: 'symbol',
         source,
@@ -147,6 +186,9 @@ const MapPositions = ({
           'icon-size': ['case', ['get', 'customMarker'], 1, iconScale],
           'icon-anchor': 'center',
           'icon-allow-overlap': true,
+          'icon-rotate': ['case', ['get', 'rotatable'], ['get', 'rotation'], 0],
+          'icon-rotation-alignment': 'map',
+          'icon-pitch-alignment': 'map',
           'text-field': `{${titleField || 'name'}}`,
           'text-allow-overlap': true,
           'text-anchor': 'bottom',
@@ -156,6 +198,7 @@ const MapPositions = ({
           'symbol-sort-key': ['get', 'id'],
         },
         paint: {
+          'icon-opacity': ['case', ['==', ['get', 'markerState'], 'offline'], 0.55, 1],
           'text-color': theme.palette.text.primary,
           'text-halo-color': theme.palette.background.paper,
           'text-halo-width': 1,
@@ -233,6 +276,9 @@ const MapPositions = ({
         if (map.getLayer(source)) {
           map.removeLayer(source);
         }
+        if (map.getLayer(`state-${source}`)) {
+          map.removeLayer(`state-${source}`);
+        }
         if (map.getLayer(`direction-${source}`)) {
           map.removeLayer(`direction-${source}`);
         }
@@ -258,34 +304,104 @@ const MapPositions = ({
   ]);
 
   useEffect(() => {
-    [id, selected].forEach((source) => {
-      map.getSource(source)?.setData({
-        type: 'FeatureCollection',
-        features: positions
-          .filter((it) => devices.hasOwnProperty(it.deviceId))
-          .filter((it) =>
-            source === id ? it.deviceId !== selectedDeviceId : it.deviceId === selectedDeviceId,
-          )
-          .map((position) => ({
-            type: 'Feature',
-            geometry: {
-              type: 'Point',
-              coordinates: toMapCoordinates(position.longitude, position.latitude),
-            },
-            properties: createFeature(
-              devices,
-              position,
-              selectedPosition && selectedPosition.id,
-              source === selected,
-            ),
-          })),
-      });
+    if (animationFrameRef.current) {
+      window.cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    const timestamp = performance.now();
+    const availablePositions = positions.filter((position) =>
+      devices.hasOwnProperty(position.deviceId),
+    );
+    const activeDeviceIds = new Set(availablePositions.map((position) => position.deviceId));
+
+    availablePositions.forEach((position) => {
+      const device = devices[position.deviceId];
+      const previous = markerMotionRef.current.get(position.deviceId);
+      const key = `${position.id}:${position.longitude}:${position.latitude}:${position.course}:${position.speed}`;
+      if (!previous || previous.key !== key) {
+        markerMotionRef.current.set(
+          position.deviceId,
+          createMarkerTransition({
+            previous,
+            previousPosition: previousPositionsRef.current.get(position.deviceId),
+            position,
+            deviceStatus: device.status,
+            timestamp,
+            animate: animationEnabled,
+          }),
+        );
+      } else {
+        previous.markerState = resolveMarkerMotionState(device.status, position);
+      }
     });
+    markerMotionRef.current.forEach((_, deviceId) => {
+      if (!activeDeviceIds.has(deviceId)) {
+        markerMotionRef.current.delete(deviceId);
+      }
+    });
+    previousPositionsRef.current = new Map(
+      availablePositions.map((position) => [position.deviceId, position]),
+    );
+
+    let active = true;
+    const publishFrame = (frameTimestamp, force = false) => {
+      if (!active) return;
+      if (!force && frameTimestamp - lastAnimationFrameRef.current < 32) {
+        animationFrameRef.current = window.requestAnimationFrame(publishFrame);
+        return;
+      }
+      lastAnimationFrameRef.current = frameTimestamp;
+      let animationPending = false;
+      const sampledPositions = availablePositions.map((position) => {
+        const transition = markerMotionRef.current.get(position.deviceId);
+        const sample = sampleMarkerTransition(transition, frameTimestamp);
+        animationPending ||= !sample.complete;
+        return { position, sample };
+      });
+
+      [id, selected].forEach((source) => {
+        map.getSource(source)?.setData({
+          type: 'FeatureCollection',
+          features: sampledPositions
+            .filter(({ position }) =>
+              source === id
+                ? position.deviceId !== selectedDeviceId
+                : position.deviceId === selectedDeviceId,
+            )
+            .map(({ position, sample }) => ({
+              type: 'Feature',
+              geometry: {
+                type: 'Point',
+                coordinates: toMapCoordinates(sample.longitude, sample.latitude),
+              },
+              properties: createFeature(
+                devices,
+                position,
+                selectedPosition && selectedPosition.id,
+                source === selected,
+                {
+                  course: sample.course,
+                  markerState: markerMotionRef.current.get(position.deviceId).markerState,
+                },
+              ),
+            })),
+        });
+      });
+
+      if (animationPending) {
+        animationFrameRef.current = window.requestAnimationFrame(publishFrame);
+      }
+    };
+
+    publishFrame(timestamp, true);
+    return () => {
+      active = false;
+      if (animationFrameRef.current) {
+        window.cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, [
-    mapCluster,
-    clusters,
-    onMarkerClick,
-    onClusterClick,
+    animationEnabled,
     devices,
     positions,
     selectedPosition,

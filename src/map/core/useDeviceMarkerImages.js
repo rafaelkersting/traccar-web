@@ -3,13 +3,23 @@ import { getMapMarkerUrl, mapMarkerAttribute } from '../../common/util/mapMarker
 import { loadImage, prepareDeviceMarkerImage } from './mapUtil';
 import { map } from './MapView';
 import { createDeviceMarkerImageKey } from './deviceMarker';
+import { getDeviceMarker3dPreset } from './marker3dCatalog';
+import { marker3dAttribute } from './marker3dSelection';
 
 const useDeviceMarkerImages = (namespace, devices) => {
   const [markerImages, setMarkerImages] = useState({});
   const markerSignature = JSON.stringify(
     Object.values(devices)
-      .filter((device) => device.attributes?.[mapMarkerAttribute])
-      .map((device) => [device.id, device.uniqueId, device.attributes[mapMarkerAttribute]]),
+      .filter(
+        (device) =>
+          device.attributes?.[mapMarkerAttribute] || device.attributes?.[marker3dAttribute],
+      )
+      .map((device) => [
+        device.id,
+        device.uniqueId,
+        device.attributes[mapMarkerAttribute],
+        device.attributes[marker3dAttribute],
+      ]),
   );
 
   useEffect(() => {
@@ -19,17 +29,27 @@ const useDeviceMarkerImages = (namespace, devices) => {
 
     setMarkerImages({});
     Promise.all(
-      entries.map(async ([deviceId, uniqueId, marker]) => {
-        const device = { id: deviceId, uniqueId, attributes: { [mapMarkerAttribute]: marker } };
-        const key = createDeviceMarkerImageKey(namespace, deviceId, marker);
+      entries.map(async ([deviceId, uniqueId, marker, marker3d]) => {
+        const device = {
+          id: deviceId,
+          uniqueId,
+          attributes: { [mapMarkerAttribute]: marker, [marker3dAttribute]: marker3d },
+        };
+        const preset = getDeviceMarker3dPreset(device);
+        const source = preset?.image || getMapMarkerUrl(device);
+        if (!source) {
+          return null;
+        }
+        const signature = preset ? `3d:${preset.id}` : marker;
+        const key = createDeviceMarkerImageKey(namespace, deviceId, signature);
         const selectedKey = `${key}-selected`;
         try {
-          const image = await loadImage(getMapMarkerUrl(device));
+          const image = await loadImage(source);
           if (active && !map.hasImage(key)) {
-            map.addImage(key, prepareDeviceMarkerImage(image), {
+            map.addImage(key, prepareDeviceMarkerImage(image, false, !preset), {
               pixelRatio: window.devicePixelRatio,
             });
-            map.addImage(selectedKey, prepareDeviceMarkerImage(image, true), {
+            map.addImage(selectedKey, prepareDeviceMarkerImage(image, true, !preset), {
               pixelRatio: window.devicePixelRatio,
             });
             addedImages.push(key, selectedKey);
