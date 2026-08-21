@@ -12,6 +12,7 @@ import {
   Button,
   Alert,
   Box,
+  Divider,
   Snackbar,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -42,6 +43,9 @@ import {
   removeMapMarkerImage,
   versionMapMarkerImage,
 } from '../common/util/mapMarkerImage';
+import DeviceMarker3dGallery from './components/DeviceMarker3dGallery';
+import { getDeviceMarker3dPreset } from '../map/core/marker3dCatalog';
+import { marker3dAttribute, selectMarker3dPreset } from '../map/core/marker3dSelection';
 
 const DevicePage = () => {
   const { classes } = useSettingsStyles();
@@ -68,6 +72,8 @@ const DevicePage = () => {
   const [optimizingMarker, setOptimizingMarker] = useState(false);
 
   const deviceImageUrl = getDeviceImageUrl(item);
+  const marker3dPreset = getDeviceMarker3dPreset(item);
+  const activeMarkerUrl = marker3dPreset?.image || markerPreview || getMapMarkerUrl(item);
 
   useEffect(
     () => () => {
@@ -143,7 +149,10 @@ const DevicePage = () => {
     if (!newFile) {
       setMarkerFile(null);
       setMarkerPreview(null);
-      setItem({ ...item, attributes: removeMapMarkerImage(item.attributes) });
+      setItem({
+        ...item,
+        attributes: selectMarker3dPreset(removeMapMarkerImage(item.attributes), null),
+      });
       setMarkerStatus({
         severity: 'success',
         message: 'Imagem removida. O sistema voltou a usar o ícone padrão da categoria.',
@@ -157,18 +166,20 @@ const DevicePage = () => {
       const result = await optimizeMapMarkerImage(newFile);
       setMarkerFile(result.file);
       setMarkerPreview(URL.createObjectURL(result.file));
+      const attributes = selectMarker3dPreset(item.attributes, null);
 
       if (item?.id) {
         const marker = await uploadMapMarker(item.id, result.file);
         setItem({
           ...item,
-          attributes: { ...item.attributes, [mapMarkerAttribute]: marker },
+          attributes: { ...attributes, [mapMarkerAttribute]: marker },
         });
         setMarkerStatus({
           severity: 'success',
           message: 'Imagem do marcador salva com sucesso.',
         });
       } else {
+        setItem({ ...item, attributes });
         setMarkerStatus({
           severity: 'success',
           message: 'Imagem do marcador pronta para ser salva.',
@@ -183,10 +194,29 @@ const DevicePage = () => {
     }
   };
 
+  const handleMarker3dSelection = (presetId) => {
+    setMarkerFile(null);
+    if (markerPreview) {
+      URL.revokeObjectURL(markerPreview);
+    }
+    setMarkerPreview(null);
+    setItem({
+      ...item,
+      attributes: selectMarker3dPreset(item.attributes, presetId),
+    });
+    setMarkerStatus({
+      severity: 'success',
+      message: 'Ícone 3D selecionado. Clique em Salvar para aplicar ao dispositivo.',
+    });
+  };
+
   const handleRemoveMarker = () => {
     setMarkerFile(null);
     setMarkerPreview(null);
-    setItem({ ...item, attributes: removeMapMarkerImage(item.attributes) });
+    setItem({
+      ...item,
+      attributes: selectMarker3dPreset(removeMapMarkerImage(item.attributes), null),
+    });
     setMarkerStatus({
       severity: 'success',
       message: 'Imagem removida. O sistema voltou a usar o ícone padrão da categoria.',
@@ -202,7 +232,10 @@ const DevicePage = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...savedItem,
-          attributes: { ...savedItem.attributes, [mapMarkerAttribute]: marker },
+          attributes: {
+            ...selectMarker3dPreset(savedItem.attributes, null),
+            [mapMarkerAttribute]: marker,
+          },
         }),
       });
       updatedItem = await response.json();
@@ -374,9 +407,20 @@ const DevicePage = () => {
           )}
           <Accordion>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="subtitle1">Ícone do Veículo no Mapa</Typography>
+              <Typography variant="subtitle1">Marcador do Mapa</Typography>
             </AccordionSummary>
             <AccordionDetails className={classes.details}>
+              <Typography variant="body2" color="textSecondary">
+                Escolha um ícone 3D ou envie uma imagem personalizada. O marcador acompanha a
+                posição e gira conforme a direção do veículo.
+              </Typography>
+              <Typography variant="subtitle2">Galeria de ícones 3D</Typography>
+              <DeviceMarker3dGallery
+                value={item.attributes?.[marker3dAttribute] || ''}
+                onChange={handleMarker3dSelection}
+                disabled={optimizingMarker}
+              />
+              <Divider>ou use uma imagem personalizada</Divider>
               <FileInput
                 placeholder="Selecionar imagem do marcador"
                 value={markerFile}
@@ -388,26 +432,37 @@ const DevicePage = () => {
                   },
                 }}
               />
-              {(markerPreview || getMapMarkerUrl(item)) && (
-                <Box
-                  component="img"
-                  src={markerPreview || getMapMarkerUrl(item)}
-                  alt="Pré-visualização do marcador do veículo"
-                  sx={{
-                    width: 80,
-                    height: 80,
-                    objectFit: 'contain',
-                    alignSelf: 'center',
-                  }}
-                />
+              {activeMarkerUrl && (
+                <>
+                  <Typography variant="caption" color="textSecondary" align="center">
+                    {marker3dPreset
+                      ? `Ícone 3D selecionado: ${marker3dPreset.name}`
+                      : 'Pré-visualização do marcador personalizado'}
+                  </Typography>
+                  <Box
+                    component="img"
+                    src={activeMarkerUrl}
+                    alt="Pré-visualização do marcador do veículo"
+                    sx={{
+                      width: 80,
+                      height: 80,
+                      objectFit: 'contain',
+                      alignSelf: 'center',
+                    }}
+                  />
+                </>
               )}
               <Button
                 variant="outlined"
                 color="primary"
                 onClick={handleRemoveMarker}
-                disabled={!markerFile && !item.attributes?.[mapMarkerAttribute]}
+                disabled={
+                  !markerFile &&
+                  !item.attributes?.[mapMarkerAttribute] &&
+                  !item.attributes?.[marker3dAttribute]
+                }
               >
-                Remover imagem do marcador
+                Restaurar ícone padrão da categoria
               </Button>
               {markerStatus && (
                 <Alert severity={markerStatus.severity} aria-live="polite">
