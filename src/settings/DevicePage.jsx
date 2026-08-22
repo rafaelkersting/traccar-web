@@ -45,7 +45,11 @@ import {
 } from '../common/util/mapMarkerImage';
 import DeviceMarker3dGallery from './components/DeviceMarker3dGallery';
 import { getDeviceMarker3dPreset } from '../map/core/marker3dCatalog';
-import { marker3dAttribute, selectMarker3dPreset } from '../map/core/marker3dSelection';
+import {
+  clearMarker3dSelection,
+  marker3dAttribute,
+  selectMarker3dConfiguration,
+} from '../map/core/marker3dSelection';
 
 const DevicePage = () => {
   const { classes } = useSettingsStyles();
@@ -73,7 +77,7 @@ const DevicePage = () => {
 
   const deviceImageUrl = getDeviceImageUrl(item);
   const marker3dPreset = getDeviceMarker3dPreset(item);
-  const activeMarkerUrl = marker3dPreset?.image || markerPreview || getMapMarkerUrl(item);
+  const activeCustomMarkerUrl = marker3dPreset ? null : markerPreview || getMapMarkerUrl(item);
 
   useEffect(
     () => () => {
@@ -151,7 +155,7 @@ const DevicePage = () => {
       setMarkerPreview(null);
       setItem({
         ...item,
-        attributes: selectMarker3dPreset(removeMapMarkerImage(item.attributes), null),
+        attributes: clearMarker3dSelection(removeMapMarkerImage(item.attributes)),
       });
       setMarkerStatus({
         severity: 'success',
@@ -166,7 +170,7 @@ const DevicePage = () => {
       const result = await optimizeMapMarkerImage(newFile);
       setMarkerFile(result.file);
       setMarkerPreview(URL.createObjectURL(result.file));
-      const attributes = selectMarker3dPreset(item.attributes, null);
+      const attributes = clearMarker3dSelection(item.attributes);
 
       if (item?.id) {
         const marker = await uploadMapMarker(item.id, result.file);
@@ -194,7 +198,7 @@ const DevicePage = () => {
     }
   };
 
-  const handleMarker3dSelection = (presetId) => {
+  const handleMarker3dSelection = (selection) => {
     setMarkerFile(null);
     if (markerPreview) {
       URL.revokeObjectURL(markerPreview);
@@ -202,7 +206,7 @@ const DevicePage = () => {
     setMarkerPreview(null);
     setItem({
       ...item,
-      attributes: selectMarker3dPreset(item.attributes, presetId),
+      attributes: selectMarker3dConfiguration(removeMapMarkerImage(item.attributes), selection),
     });
     setMarkerStatus({
       severity: 'success',
@@ -215,7 +219,7 @@ const DevicePage = () => {
     setMarkerPreview(null);
     setItem({
       ...item,
-      attributes: selectMarker3dPreset(removeMapMarkerImage(item.attributes), null),
+      attributes: clearMarker3dSelection(removeMapMarkerImage(item.attributes)),
     });
     setMarkerStatus({
       severity: 'success',
@@ -233,7 +237,7 @@ const DevicePage = () => {
         body: JSON.stringify({
           ...savedItem,
           attributes: {
-            ...selectMarker3dPreset(savedItem.attributes, null),
+            ...clearMarker3dSelection(savedItem.attributes),
             [mapMarkerAttribute]: marker,
           },
         }),
@@ -411,37 +415,37 @@ const DevicePage = () => {
             </AccordionSummary>
             <AccordionDetails className={classes.details}>
               <Typography variant="body2" color="textSecondary">
-                Escolha um ícone 3D ou envie uma imagem personalizada. O marcador acompanha a
-                posição e gira conforme a direção do veículo.
+                Escolha categoria, modelo e cor, ou envie uma imagem personalizada. O marcador
+                acompanha a posição e gira conforme a direção do veículo.
               </Typography>
-              <Typography variant="subtitle2">Galeria de ícones 3D</Typography>
               <DeviceMarker3dGallery
-                value={item.attributes?.[marker3dAttribute] || ''}
+                value={marker3dPreset}
                 onChange={handleMarker3dSelection}
                 disabled={optimizingMarker}
               />
-              <Divider>ou use uma imagem personalizada</Divider>
+              <Divider>usar imagem personalizada</Divider>
               <FileInput
-                placeholder="Selecionar imagem do marcador"
+                placeholder="Enviar ícone personalizado"
                 value={markerFile}
                 onChange={handleMarkerInput}
                 slotProps={{
                   htmlInput: {
-                    accept: 'image/jpeg,image/png,image/webp',
+                    accept: 'image/jpeg,image/png,image/webp,image/svg+xml',
                     disabled: optimizingMarker,
                   },
                 }}
               />
-              {activeMarkerUrl && (
+              <Typography variant="caption" color="textSecondary">
+                Formatos aceitos: PNG, WebP, SVG ou JPEG. A imagem será otimizada para o mapa.
+              </Typography>
+              {activeCustomMarkerUrl && (
                 <>
                   <Typography variant="caption" color="textSecondary" align="center">
-                    {marker3dPreset
-                      ? `Ícone 3D selecionado: ${marker3dPreset.name}`
-                      : 'Pré-visualização do marcador personalizado'}
+                    Pré-visualização do marcador personalizado
                   </Typography>
                   <Box
                     component="img"
-                    src={activeMarkerUrl}
+                    src={activeCustomMarkerUrl}
                     alt="Pré-visualização do marcador do veículo"
                     sx={{
                       width: 80,

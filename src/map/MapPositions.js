@@ -9,7 +9,7 @@ import { useAttributePreference } from '../common/util/preferences';
 import { useCatchCallback } from '../reactHelper';
 import { findFonts, fromMapCoordinates, toMapCoordinates } from './core/mapUtil';
 import useDeviceMarkerImages from './core/useDeviceMarkerImages';
-import { resolveDeviceMarkerImage } from './core/deviceMarker';
+import { deviceMarkerOpacityExpression, resolveDeviceMarkerImage } from './core/deviceMarker';
 import {
   createMarkerTransition,
   isRotatableVehicleMarker,
@@ -198,7 +198,7 @@ const MapPositions = ({
           'symbol-sort-key': ['get', 'id'],
         },
         paint: {
-          'icon-opacity': ['case', ['==', ['get', 'markerState'], 'offline'], 0.55, 1],
+          'icon-opacity': deviceMarkerOpacityExpression,
           'text-color': theme.palette.text.primary,
           'text-halo-color': theme.palette.background.paper,
           'text-halo-width': 1,

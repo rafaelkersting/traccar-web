@@ -7,13 +7,13 @@ export const mapMarkerImageLimits = {
   maxDimension: 80,
 };
 
-const acceptedMapMarkerTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const acceptedMapMarkerTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']);
 
 export const optimizeMapMarkerImage = (file, options = {}) =>
   optimizeDeviceImage(file, {
     ...mapMarkerImageLimits,
     acceptedTypes: acceptedMapMarkerTypes,
-    invalidTypeMessage: 'Selecione uma imagem JPG, PNG ou WebP.',
+    invalidTypeMessage: 'Selecione uma imagem JPG, PNG, WebP ou SVG.',
     ...options,
   });
 
