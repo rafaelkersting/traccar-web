@@ -9,6 +9,7 @@ import {
 } from '../src/common/util/mapMarkerImage.js';
 import {
   createDeviceMarkerImageKey,
+  deviceMarkerOpacityExpression,
   mapMarkerVisualSizes,
   resolveDeviceMarkerImage,
 } from '../src/map/core/deviceMarker.js';
@@ -68,14 +69,23 @@ test('preserva a fonte com transparência ao converter PNG', async () => {
   assert.deepEqual({ width: result.width, height: result.height }, { width: 80, height: 80 });
 });
 
-test('rejeita GIF e arquivos que não sejam JPG, PNG ou WebP', async () => {
+test('aceita SVG válido e rejeita GIF ou arquivo que não seja imagem compatível', async () => {
+  const svg = makeFile({ name: 'marker.svg', type: 'image/svg+xml', size: 1000 });
+  const result = await optimizeMapMarkerImage(svg, {
+    decode: makeDecoder(60, 60),
+    encode: async () => {
+      throw new Error('Encoder não deveria ser chamado');
+    },
+  });
+  assert.equal(result.file, svg);
+
   await assert.rejects(
     optimizeMapMarkerImage(makeFile({ name: 'marker.gif', type: 'image/gif', size: 1000 })),
-    /Selecione uma imagem JPG, PNG ou WebP/,
+    /Selecione uma imagem JPG, PNG, WebP ou SVG/,
   );
   await assert.rejects(
     optimizeMapMarkerImage(makeFile({ name: 'marker.txt', type: 'text/plain', size: 1000 })),
-    /Selecione uma imagem JPG, PNG ou WebP/,
+    /Selecione uma imagem JPG, PNG, WebP ou SVG/,
   );
 });
 
@@ -117,6 +127,17 @@ test('usa 44 px normalmente e 52 px quando o dispositivo está selecionado', () 
     regularContent: 36,
     selectedContent: 42,
   });
+});
+
+test('preserva cor e contraste do marcador personalizado mesmo offline', () => {
+  assert.deepEqual(deviceMarkerOpacityExpression, [
+    'case',
+    ['get', 'customMarker'],
+    1,
+    ['==', ['get', 'markerState'], 'offline'],
+    0.55,
+    1,
+  ]);
 });
 
 test('gera chave estável e diferente para cada versão da imagem', () => {

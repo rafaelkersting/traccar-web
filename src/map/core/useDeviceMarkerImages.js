@@ -4,7 +4,13 @@ import { loadImage, prepareDeviceMarkerImage } from './mapUtil';
 import { map } from './MapView';
 import { createDeviceMarkerImageKey } from './deviceMarker';
 import { getDeviceMarker3dPreset } from './marker3dCatalog';
-import { marker3dAttribute } from './marker3dSelection';
+import { tintMarker3dImage } from './marker3dImage';
+import {
+  marker3dAttribute,
+  marker3dCategoryAttribute,
+  marker3dColorAttribute,
+  marker3dModelAttribute,
+} from './marker3dSelection';
 
 const useDeviceMarkerImages = (namespace, devices) => {
   const [markerImages, setMarkerImages] = useState({});
@@ -19,6 +25,9 @@ const useDeviceMarkerImages = (namespace, devices) => {
         device.uniqueId,
         device.attributes[mapMarkerAttribute],
         device.attributes[marker3dAttribute],
+        device.attributes[marker3dCategoryAttribute],
+        device.attributes[marker3dModelAttribute],
+        device.attributes[marker3dColorAttribute],
       ]),
   );
 
@@ -29,27 +38,34 @@ const useDeviceMarkerImages = (namespace, devices) => {
 
     setMarkerImages({});
     Promise.all(
-      entries.map(async ([deviceId, uniqueId, marker, marker3d]) => {
+      entries.map(async ([deviceId, uniqueId, marker, marker3d, category, model, color]) => {
         const device = {
           id: deviceId,
           uniqueId,
-          attributes: { [mapMarkerAttribute]: marker, [marker3dAttribute]: marker3d },
+          attributes: {
+            [mapMarkerAttribute]: marker,
+            [marker3dAttribute]: marker3d,
+            [marker3dCategoryAttribute]: category,
+            [marker3dModelAttribute]: model,
+            [marker3dColorAttribute]: color,
+          },
         };
         const preset = getDeviceMarker3dPreset(device);
         const source = preset?.image || getMapMarkerUrl(device);
         if (!source) {
           return null;
         }
-        const signature = preset ? `3d:${preset.id}` : marker;
+        const signature = preset ? `3d:${preset.id}:${preset.colorId}` : marker;
         const key = createDeviceMarkerImageKey(namespace, deviceId, signature);
         const selectedKey = `${key}-selected`;
         try {
           const image = await loadImage(source);
+          const renderImage = preset ? tintMarker3dImage(image, preset.colorValue) : image;
           if (active && !map.hasImage(key)) {
-            map.addImage(key, prepareDeviceMarkerImage(image, false, !preset), {
+            map.addImage(key, prepareDeviceMarkerImage(renderImage, false, !preset), {
               pixelRatio: window.devicePixelRatio,
             });
-            map.addImage(selectedKey, prepareDeviceMarkerImage(image, true, !preset), {
+            map.addImage(selectedKey, prepareDeviceMarkerImage(renderImage, true, !preset), {
               pixelRatio: window.devicePixelRatio,
             });
             addedImages.push(key, selectedKey);
