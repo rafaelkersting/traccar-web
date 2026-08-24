@@ -11,6 +11,7 @@ import TableShimmer from '../common/components/TableShimmer';
 import SearchHeader from './components/SearchHeader';
 import useSettingsStyles from './common/useSettingsStyles';
 import fetchOrThrow from '../common/util/fetchOrThrow';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const ComputedAttributesPage = () => {
   const { classes } = useSettingsStyles();
@@ -21,6 +22,7 @@ const ComputedAttributesPage = () => {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [hasMore, setHasMore] = useState(true);
   const administrator = useAdministrator();
+  const access = useAccessPermissions();
 
   const loadItems = useCallback(
     async (offset, signal) => {
@@ -76,6 +78,8 @@ const ComputedAttributesPage = () => {
                     editPath="/settings/attribute"
                     endpoint="attributes/computed"
                     onReload={reload}
+                    canEdit={access.can('attribute.edit')}
+                    canDelete={access.can('attribute.delete')}
                   />
                 </TableCell>
               )}
@@ -90,7 +94,10 @@ const ComputedAttributesPage = () => {
           )}
         </TableBody>
       </Table>
-      <CollectionFab editPath="/settings/attribute" disabled={!administrator} />
+      <CollectionFab
+        editPath="/settings/attribute"
+        disabled={!administrator || !access.can('attribute.create')}
+      />
     </PageLayout>
   );
 };

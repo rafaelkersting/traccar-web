@@ -327,7 +327,7 @@ const MapPositions = ({
             position,
             deviceStatus: device.status,
             timestamp,
-            animate: animationEnabled,
+            animate: animationEnabled && position.deviceId === selectedDeviceId,
           }),
         );
       } else {

@@ -35,6 +35,8 @@ test('mantém a última direção válida enquanto o veículo está parado', () 
 test('interpola a rotação pelo caminho angular mais curto', () => {
   assert.equal(interpolateCourse(350, 10, 0.5), 0);
   assert.equal(interpolateCourse(10, 350, 0.5), 0);
+  assert.equal(interpolateCourse(358, 2, 1), 2);
+  assert.equal(interpolateCourse(2, 358, 1), 358);
 });
 
 test('diferencia movimento, parada e dispositivo fora de comunicação', () => {

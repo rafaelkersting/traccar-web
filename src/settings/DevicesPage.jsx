@@ -13,6 +13,7 @@ import {
   Switch,
 } from '@mui/material';
 import LinkIcon from '@mui/icons-material/Link';
+import PaletteIcon from '@mui/icons-material/Palette';
 import { useTheme } from '@mui/material/styles';
 import { useAsyncTask, useScrollToLoad, pageSize } from '../reactHelper';
 import { useTranslation } from '../common/components/LocalizationProvider';
@@ -31,6 +32,7 @@ import usePersistedState from '../common/util/usePersistedState';
 import fetchOrThrow from '../common/util/fetchOrThrow';
 import AddressValue from '../common/components/AddressValue';
 import exportExcel from '../common/util/exportExcel';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const DevicesPage = () => {
   const { classes } = useSettingsStyles();
@@ -43,6 +45,7 @@ const DevicesPage = () => {
   const manager = useManager();
   const deviceReadonly = useDeviceReadonly();
   const coordinateFormat = usePreference('coordinateFormat');
+  const access = useAccessPermissions();
 
   const positions = useSelector((state) => state.session.positions);
 
@@ -104,6 +107,18 @@ const DevicesPage = () => {
     handler: (deviceId) => navigate(`/settings/device/${deviceId}/connections`),
   };
 
+  const actionAppearance = {
+    key: 'appearance',
+    title: 'Personalizar veículo',
+    icon: <PaletteIcon fontSize="small" />,
+    handler: (deviceId) => navigate(`/settings/device/${deviceId}/appearance`),
+  };
+
+  const customActions = [
+    ...(access.can('user.link-scope') ? [actionConnections] : []),
+    ...(access.can('device.appearance.view') ? [actionAppearance] : []),
+  ];
+
   return (
     <PageLayout menu={<SettingsMenu />} breadcrumbs={['settingsTitle', 'deviceTitle']}>
       <SearchHeader keyword={searchKeyword} setKeyword={setSearchKeyword} />
@@ -152,8 +167,10 @@ const DevicesPage = () => {
                   editPath="/settings/device"
                   endpoint="devices"
                   onReload={reload}
-                  customActions={[actionConnections]}
+                  customActions={customActions}
                   readonly={deviceReadonly}
+                  canEdit={access.can('device.edit')}
+                  canDelete={access.can('device.delete')}
                 />
               </TableCell>
             </TableRow>
@@ -169,9 +186,11 @@ const DevicesPage = () => {
         <TableFooter>
           <TableRow>
             <TableCell>
-              <Button onClick={handleExport} variant="text">
-                {t('reportExport')}
-              </Button>
+              {access.can('report.export') && (
+                <Button onClick={handleExport} variant="text">
+                  {t('reportExport')}
+                </Button>
+              )}
             </TableCell>
             <TableCell colSpan={manager ? 9 : 8} align="right">
               <FormControlLabel
@@ -190,7 +209,7 @@ const DevicesPage = () => {
           </TableRow>
         </TableFooter>
       </Table>
-      <CollectionFab editPath="/settings/device" />
+      <CollectionFab editPath="/settings/device" disabled={!access.can('device.create')} />
     </PageLayout>
   );
 };

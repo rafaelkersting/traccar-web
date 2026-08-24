@@ -34,7 +34,13 @@ const optionStyle = (selected) => (theme) => ({
   },
 });
 
-const DeviceMarker3dGallery = ({ value, onChange, disabled }) => {
+const DeviceMarker3dGallery = ({
+  value,
+  onChange,
+  disabled,
+  canChangeModel = true,
+  canChangeColor = true,
+}) => {
   const [preview, setPreview] = useState(null);
   const models = getMarker3dModels(value?.categoryId);
 
@@ -96,7 +102,7 @@ const DeviceMarker3dGallery = ({ value, onChange, disabled }) => {
                 role="radio"
                 aria-checked={selected}
                 aria-label={`Selecionar categoria: ${category.name}`}
-                disabled={disabled}
+                disabled={disabled || !canChangeModel}
                 onClick={() => selectCategory(category)}
                 sx={optionStyle(selected)}
               >
@@ -140,7 +146,7 @@ const DeviceMarker3dGallery = ({ value, onChange, disabled }) => {
                     key={model.id}
                     role="radio"
                     aria-checked={selected}
-                    disabled={disabled}
+                    disabled={disabled || !canChangeModel}
                     onClick={() => selectModel(model)}
                     sx={{
                       px: 1.5,
@@ -177,7 +183,7 @@ const DeviceMarker3dGallery = ({ value, onChange, disabled }) => {
                       role="radio"
                       aria-checked={selected}
                       aria-label={`Selecionar cor: ${color.name}`}
-                      disabled={disabled}
+                      disabled={disabled || !canChangeColor}
                       onClick={() => selectColor(color)}
                       sx={{
                         width: 34,

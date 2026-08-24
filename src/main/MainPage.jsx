@@ -7,7 +7,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import DeviceList from './DeviceList';
 import BottomMenu from '../common/components/BottomMenu';
 import StatusCard from '../common/components/StatusCard';
-import { devicesActions } from '../store';
+import { mapUiActions } from '../store';
+import { statusCardModes } from '../store/mapUi';
 import usePersistedState from '../common/util/usePersistedState';
 import EventsDrawer from './EventsDrawer';
 import useFilter from './useFilter';
@@ -87,6 +88,11 @@ const MainPage = () => {
   const mapOnSelect = useAttributePreference('mapOnSelect', true);
 
   const selectedDeviceId = useSelector((state) => state.devices.selectedId);
+  const selectedTime = useSelector((state) => state.devices.selectTime);
+  const statusCardMode = useSelector((state) => state.mapUi.detailsMode);
+  const followAvailable = useSelector((state) => state.mapUi.followAvailable);
+  const followPaused = useSelector((state) => state.mapUi.followPaused);
+  const followMode = useSelector((state) => state.mapUi.followMode);
   const positions = useSelector((state) => state.session.positions);
   const [filteredPositions, setFilteredPositions] = useState([]);
   const selectedPosition = filteredPositions.find(
@@ -114,6 +120,14 @@ const MainPage = () => {
       setDevicesOpen(false);
     }
   }, [desktop, mapOnSelect, selectedDeviceId]);
+
+  useEffect(() => {
+    dispatch(
+      mapUiActions.setDetailsMode(
+        selectedDeviceId ? statusCardModes.expanded : statusCardModes.closed,
+      ),
+    );
+  }, [dispatch, selectedDeviceId, selectedTime]);
 
   useFilter(
     keyword,
@@ -183,7 +197,12 @@ const MainPage = () => {
         <StatusCard
           deviceId={selectedDeviceId}
           position={selectedPosition}
-          onClose={() => dispatch(devicesActions.selectId(null))}
+          mode={statusCardMode}
+          followActive={followAvailable && !followPaused}
+          followMode={followMode}
+          onClose={() => dispatch(mapUiActions.setDetailsMode(statusCardModes.closed))}
+          onCollapse={() => dispatch(mapUiActions.setDetailsMode(statusCardModes.collapsed))}
+          onExpand={() => dispatch(mapUiActions.setDetailsMode(statusCardModes.expanded))}
           desktopPadding={theme.dimensions.drawerWidthDesktop}
         />
       )}
