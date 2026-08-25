@@ -10,10 +10,12 @@ import TableShimmer from '../common/components/TableShimmer';
 import SearchHeader from './components/SearchHeader';
 import useSettingsStyles from './common/useSettingsStyles';
 import fetchOrThrow from '../common/util/fetchOrThrow';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const CalendarsPage = () => {
   const { classes } = useSettingsStyles();
   const t = useTranslation();
+  const access = useAccessPermissions();
 
   const [reloadKey, reload] = useReducer((k) => k + 1, 0);
   const [items, setItems] = useState([]);
@@ -65,6 +67,8 @@ const CalendarsPage = () => {
                   editPath="/settings/calendar"
                   endpoint="calendars"
                   onReload={reload}
+                  canEdit={access.can('calendar.edit')}
+                  canDelete={access.can('calendar.delete')}
                 />
               </TableCell>
             </TableRow>
@@ -74,7 +78,7 @@ const CalendarsPage = () => {
           )}
         </TableBody>
       </Table>
-      <CollectionFab editPath="/settings/calendar" />
+      <CollectionFab editPath="/settings/calendar" disabled={!access.can('calendar.create')} />
     </PageLayout>
   );
 };

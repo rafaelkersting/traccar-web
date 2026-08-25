@@ -21,6 +21,7 @@ import { sessionActions } from '../../store';
 import { useTranslation } from './LocalizationProvider';
 import { useRestriction } from '../util/permissions';
 import { nativePostMessage } from './NativeInterface';
+import useAccessPermissions from '../util/useAccessPermissions';
 
 const BottomMenu = () => {
   const navigate = useNavigate();
@@ -30,12 +31,26 @@ const BottomMenu = () => {
 
   const readonly = useRestriction('readonly');
   const disableReports = useRestriction('disableReports');
+  const access = useAccessPermissions();
   const devices = useSelector((state) => state.devices.items);
   const user = useSelector((state) => state.session.user);
   const socket = useSelector((state) => state.session.socket);
   const selectedDeviceId = useSelector((state) => state.devices.selectedId);
 
   const [anchorEl, setAnchorEl] = useState(null);
+  const hasSettings = [
+    'preference.view',
+    'notification.view',
+    'device.view',
+    'geofence.view',
+    'group.view',
+    'driver.view',
+    'calendar.view',
+    'attribute.view',
+    'maintenance.view',
+    'command.view',
+    'user.view',
+  ].some(access.can);
 
   const currentSelection = () => {
     if (location.pathname === `/settings/user/${user.id}`) {
@@ -128,23 +143,25 @@ const BottomMenu = () => {
   return (
     <Paper square elevation={3}>
       <BottomNavigation value={currentSelection()} onChange={handleSelection} showLabels>
-        <BottomNavigationAction
-          label={t('mapTitle')}
-          icon={
-            <Badge color="error" variant="dot" overlap="circular" invisible={socket !== false}>
-              <MapIcon />
-            </Badge>
-          }
-          value="map"
-        />
-        {!disableReports && (
+        {access.can('map.view') && (
+          <BottomNavigationAction
+            label={t('mapTitle')}
+            icon={
+              <Badge color="error" variant="dot" overlap="circular" invisible={socket !== false}>
+                <MapIcon />
+              </Badge>
+            }
+            value="map"
+          />
+        )}
+        {!disableReports && access.can('report.view') && (
           <BottomNavigationAction
             label={t('reportTitle')}
             icon={<DescriptionIcon />}
             value="reports"
           />
         )}
-        {!readonly && (
+        {!readonly && hasSettings && (
           <BottomNavigationAction
             label={t('settingsTitle')}
             icon={<SettingsIcon />}

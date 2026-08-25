@@ -28,6 +28,7 @@ import { useTheme } from '@mui/material/styles';
 import { devicesActions } from '../../store';
 import fetchOrThrow from '../util/fetchOrThrow';
 import { getCommandResultMessage, getCriticalCommandSafety } from '../../settings/commandCatalog';
+import useAccessPermissions from '../util/useAccessPermissions';
 
 const commandUnavailable =
   'Comando não configurado, não autorizado ou não suportado por este rastreador';
@@ -68,6 +69,7 @@ const QuickDeviceActions = ({
   const navigate = useNavigate();
   const theme = useTheme();
   const mobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const access = useAccessPermissions();
   const [commands, setCommands] = useState([]);
   const [criticalCommand, setCriticalCommand] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -75,7 +77,7 @@ const QuickDeviceActions = ({
   const active = card || expanded || Boolean(anchorEl);
 
   useEffect(() => {
-    if (!active || !device?.id) {
+    if (!active || !device?.id || !access.can('command.view')) {
       return undefined;
     }
     const controller = new AbortController();
@@ -93,7 +95,7 @@ const QuickDeviceActions = ({
     };
     load();
     return () => controller.abort();
-  }, [active, device?.id]);
+  }, [access, active, device?.id]);
 
   const engineStop = useMemo(
     () => commands.find((command) => command.type === 'engineStop'),
@@ -153,73 +155,94 @@ const QuickDeviceActions = ({
   };
 
   const showQuickButtons = card || (expanded && !mobile);
+  const canShowMore =
+    access.can('map.history') || access.can('command.send') || access.can('device.edit');
 
   return (
     <>
-      <ActionButton title="Localizar veículo no mapa" onClick={locate}>
-        <MyLocationIcon fontSize="small" />
-      </ActionButton>
+      {access.can('command.locate') && (
+        <ActionButton title="Localizar veículo no mapa" onClick={locate}>
+          <MyLocationIcon fontSize="small" />
+        </ActionButton>
+      )}
       {showQuickButtons && (
         <>
-          <ActionButton
-            title="Bloquear motor"
-            disabled={!engineStop}
-            onClick={(event) => requestCommand(event, engineStop)}
-          >
-            <LockIcon fontSize="small" />
-          </ActionButton>
-          <ActionButton
-            title="Desbloquear motor"
-            disabled={!engineResume}
-            onClick={(event) => requestCommand(event, engineResume)}
-          >
-            <LockOpenIcon fontSize="small" />
-          </ActionButton>
+          {access.can('command.lock') && (
+            <ActionButton
+              title="Bloquear motor"
+              disabled={!engineStop}
+              onClick={(event) => requestCommand(event, engineStop)}
+            >
+              <LockIcon fontSize="small" />
+            </ActionButton>
+          )}
+          {access.can('command.unlock') && (
+            <ActionButton
+              title="Desbloquear motor"
+              disabled={!engineResume}
+              onClick={(event) => requestCommand(event, engineResume)}
+            >
+              <LockOpenIcon fontSize="small" />
+            </ActionButton>
+          )}
         </>
       )}
-      {showMore && (card || expanded) && (
+      {showMore && canShowMore && (card || expanded) && (
         <ActionButton title="Mais ações" onClick={openMenu}>
           <MoreVertIcon fontSize="small" />
         </ActionButton>
       )}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
-        {mobile && (
+        {mobile && (access.can('command.lock') || access.can('command.unlock')) && (
           <>
-            <MenuItem disabled={!engineStop} onClick={(event) => requestCommand(event, engineStop)}>
-              <ListItemIcon>
-                <LockIcon fontSize="small" />
-              </ListItemIcon>
-              Bloquear motor
-            </MenuItem>
-            <MenuItem
-              disabled={!engineResume}
-              onClick={(event) => requestCommand(event, engineResume)}
-            >
-              <ListItemIcon>
-                <LockOpenIcon fontSize="small" />
-              </ListItemIcon>
-              Desbloquear motor
-            </MenuItem>
+            {access.can('command.lock') && (
+              <MenuItem
+                disabled={!engineStop}
+                onClick={(event) => requestCommand(event, engineStop)}
+              >
+                <ListItemIcon>
+                  <LockIcon fontSize="small" />
+                </ListItemIcon>
+                Bloquear motor
+              </MenuItem>
+            )}
+            {access.can('command.unlock') && (
+              <MenuItem
+                disabled={!engineResume}
+                onClick={(event) => requestCommand(event, engineResume)}
+              >
+                <ListItemIcon>
+                  <LockOpenIcon fontSize="small" />
+                </ListItemIcon>
+                Desbloquear motor
+              </MenuItem>
+            )}
           </>
         )}
-        <MenuItem onClick={() => openPage(`/replay?deviceId=${device.id}`)}>
-          <ListItemIcon>
-            <HistoryIcon fontSize="small" />
-          </ListItemIcon>
-          Histórico
-        </MenuItem>
-        <MenuItem onClick={() => openPage(`/settings/device/${device.id}/command`)}>
-          <ListItemIcon>
-            <SendIcon fontSize="small" />
-          </ListItemIcon>
-          Comandos adicionais
-        </MenuItem>
-        <MenuItem onClick={() => openPage(`/settings/device/${device.id}`)}>
-          <ListItemIcon>
-            <EditIcon fontSize="small" />
-          </ListItemIcon>
-          Editar veículo
-        </MenuItem>
+        {access.can('map.history') && (
+          <MenuItem onClick={() => openPage(`/replay?deviceId=${device.id}`)}>
+            <ListItemIcon>
+              <HistoryIcon fontSize="small" />
+            </ListItemIcon>
+            Histórico
+          </MenuItem>
+        )}
+        {access.can('command.send') && (
+          <MenuItem onClick={() => openPage(`/settings/device/${device.id}/command`)}>
+            <ListItemIcon>
+              <SendIcon fontSize="small" />
+            </ListItemIcon>
+            Comandos adicionais
+          </MenuItem>
+        )}
+        {access.can('device.edit') && (
+          <MenuItem onClick={() => openPage(`/settings/device/${device.id}`)}>
+            <ListItemIcon>
+              <EditIcon fontSize="small" />
+            </ListItemIcon>
+            Editar veículo
+          </MenuItem>
+        )}
       </Menu>
       <Dialog open={Boolean(criticalCommand)} onClose={() => setCriticalCommand(null)}>
         <DialogTitle>Confirmar comando crítico</DialogTitle>

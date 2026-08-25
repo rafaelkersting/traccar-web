@@ -46,6 +46,7 @@ import {
   SYSTEM_THEME_ATTRIBUTE,
   resolveSystemThemeId,
 } from '../common/theme/systemThemes';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const deviceFields = [
   { id: 'name', name: 'sharedName' },
@@ -65,7 +66,8 @@ const PreferencesPage = () => {
   const t = useTranslation();
 
   const admin = useAdministrator();
-  const readonly = useRestriction('readonly');
+  const access = useAccessPermissions();
+  const readonly = useRestriction('readonly') || !access.can('preference.edit');
 
   const user = useSelector((state) => state.session.user);
   const [attributes, setAttributes] = useState(user.attributes);
@@ -298,7 +300,7 @@ const PreferencesPage = () => {
                     control={
                       <Checkbox
                         checked={
-                          attributes.hasOwnProperty('mapFollow') ? attributes.mapFollow : false
+                          attributes.hasOwnProperty('mapFollow') ? attributes.mapFollow : true
                         }
                         onChange={(e) =>
                           setAttributes({ ...attributes, mapFollow: e.target.checked })
@@ -359,34 +361,36 @@ const PreferencesPage = () => {
                 />
               </AccordionDetails>
             </Accordion>
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1">{t('sharedSound')}</Typography>
-              </AccordionSummary>
-              <AccordionDetails className={classes.details}>
-                <SelectField
-                  multiple
-                  value={attributes.soundEvents?.split(',') || []}
-                  onChange={(e) =>
-                    setAttributes({ ...attributes, soundEvents: e.target.value.join(',') })
-                  }
-                  endpoint="/api/notifications/types"
-                  keyGetter={(it) => it.type}
-                  titleGetter={(it) => t(prefixString('event', it.type))}
-                  label={t('eventsSoundEvents')}
-                />
-                <SelectField
-                  multiple
-                  value={attributes.soundAlarms?.split(',') || ['sos']}
-                  onChange={(e) =>
-                    setAttributes({ ...attributes, soundAlarms: e.target.value.join(',') })
-                  }
-                  data={alarms}
-                  keyGetter={(it) => it.key}
-                  label={t('eventsSoundAlarms')}
-                />
-              </AccordionDetails>
-            </Accordion>
+            {access.can('notification.view') && (
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle1">{t('sharedSound')}</Typography>
+                </AccordionSummary>
+                <AccordionDetails className={classes.details}>
+                  <SelectField
+                    multiple
+                    value={attributes.soundEvents?.split(',') || []}
+                    onChange={(e) =>
+                      setAttributes({ ...attributes, soundEvents: e.target.value.join(',') })
+                    }
+                    endpoint="/api/notifications/types"
+                    keyGetter={(it) => it.type}
+                    titleGetter={(it) => t(prefixString('event', it.type))}
+                    label={t('eventsSoundEvents')}
+                  />
+                  <SelectField
+                    multiple
+                    value={attributes.soundAlarms?.split(',') || ['sos']}
+                    onChange={(e) =>
+                      setAttributes({ ...attributes, soundAlarms: e.target.value.join(',') })
+                    }
+                    data={alarms}
+                    keyGetter={(it) => it.key}
+                    label={t('eventsSoundAlarms')}
+                  />
+                </AccordionDetails>
+              </Accordion>
+            )}
           </>
         )}
         <Accordion>

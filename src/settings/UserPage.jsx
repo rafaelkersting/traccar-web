@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Accordion,
@@ -18,8 +18,14 @@ import {
   IconButton,
   OutlinedInput,
   Dialog,
+  DialogTitle,
   DialogContent,
   DialogActions,
+  Alert,
+  Chip,
+  Divider,
+  Snackbar,
+  Stack,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
@@ -41,6 +47,10 @@ import useMapStyles from '../map/core/useMapStyles';
 import { map } from '../map/core/MapView';
 import useSettingsStyles from './common/useSettingsStyles';
 import fetchOrThrow from '../common/util/fetchOrThrow';
+import { ACCESS_MODULES, permissionSource } from '../common/util/accessPermissions';
+import useAccessPermissions, {
+  refreshAccessPermissions,
+} from '../common/util/useAccessPermissions';
 
 const UserPage = () => {
   const { classes } = useSettingsStyles();
@@ -51,6 +61,7 @@ const UserPage = () => {
   const admin = useAdministrator();
   const manager = useManager();
   const fixedEmail = useRestriction('fixedEmail');
+  const access = useAccessPermissions();
 
   const currentUser = useSelector((state) => state.session.user);
   const registrationEnabled = useSelector((state) => state.session.server.registration);
@@ -64,6 +75,66 @@ const UserPage = () => {
 
   const { id } = useParams();
   const [item, setItem] = useState(id === currentUser.id.toString() ? currentUser : null);
+  const [accessProfiles, setAccessProfiles] = useState([]);
+  const [userAccess, setUserAccess] = useState({ profileId: 0, overrides: [] });
+  const [accessLoaded, setAccessLoaded] = useState(!admin);
+  const [accessSaving, setAccessSaving] = useState(false);
+  const [accessMessage, setAccessMessage] = useState(null);
+  const [effectiveOpen, setEffectiveOpen] = useState(false);
+  const initialSnapshotRef = useRef(null);
+  const initialProfileIdRef = useRef(null);
+
+  useEffect(() => {
+    if (!admin) {
+      return undefined;
+    }
+    const controller = new AbortController();
+    Promise.all([
+      fetchOrThrow('/api/access/profiles', { signal: controller.signal }).then((response) =>
+        response.json(),
+      ),
+      id
+        ? fetchOrThrow(`/api/access/users/${id}`, { signal: controller.signal }).then((response) =>
+            response.json(),
+          )
+        : Promise.resolve({ profileId: 0, overrides: [] }),
+    ]).then(([profiles, access]) => {
+      setAccessProfiles(profiles);
+      setUserAccess(access);
+      initialProfileIdRef.current = access.profileId || 0;
+      setAccessLoaded(true);
+    });
+    return () => controller.abort();
+  }, [admin, id]);
+
+  useEffect(() => {
+    if (item && accessLoaded && initialSnapshotRef.current === null) {
+      initialSnapshotRef.current = JSON.stringify({ item, profileId: userAccess.profileId });
+    }
+  }, [accessLoaded, item, userAccess.profileId]);
+
+  const selectedProfile = accessProfiles.find((profile) => profile.id === userAccess.profileId);
+  const effectiveAccess = userAccess.effectiveAccess;
+  const accessDirty =
+    initialSnapshotRef.current !== null &&
+    initialSnapshotRef.current !== JSON.stringify({ item, profileId: userAccess.profileId });
+  const profileAssignmentDirty =
+    initialProfileIdRef.current !== null && initialProfileIdRef.current !== userAccess.profileId;
+  const canAssignProfile = access.can('user.assign-profile') && access.can('access-profile.assign');
+  const canSaveUser = id
+    ? access.can(id === currentUser.id.toString() ? 'preference.edit' : 'user.edit')
+    : access.can('user.create');
+
+  const effectiveModules = useMemo(
+    () =>
+      ACCESS_MODULES.map((module) => ({
+        ...module,
+        allowed: module.permissions.filter(([permission]) =>
+          effectiveAccess?.permissions?.includes(permission),
+        ).length,
+      })),
+    [effectiveAccess],
+  );
 
   const [deleteEmail, setDeleteEmail] = useState();
   const [deleteFailed, setDeleteFailed] = useState(false);
@@ -115,9 +186,47 @@ const UserPage = () => {
     }
   }, [item, searchParams, setSearchParams, attribute]);
 
-  const onItemSaved = (result) => {
-    if (result.id === currentUser.id) {
-      dispatch(sessionActions.updateUser(result));
+  const saveUser = async (value) => {
+    setAccessSaving(true);
+    try {
+      const response = await fetchOrThrow(id ? `/api/users/${id}` : '/api/users', {
+        method: id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(value),
+      });
+      const result = await response.json();
+      let savedAccess = userAccess;
+      if (admin && profileAssignmentDirty) {
+        const accessResponse = await fetchOrThrow(`/api/access/users/${result.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(userAccess),
+        });
+        savedAccess = await accessResponse.json();
+        setUserAccess(savedAccess);
+        initialProfileIdRef.current = savedAccess.profileId || 0;
+      }
+      initialSnapshotRef.current = JSON.stringify({
+        item: result,
+        profileId: savedAccess.profileId,
+      });
+      if (result.id === currentUser.id) {
+        dispatch(sessionActions.updateUser(result));
+        refreshAccessPermissions();
+      }
+      setAccessMessage({
+        severity: 'success',
+        text: selectedProfile
+          ? `Perfil ${selectedProfile.name} atribuído ao usuário com sucesso`
+          : 'Permissões atualizadas com sucesso',
+      });
+      await new Promise((resolve) => window.setTimeout(resolve, 900));
+      return result;
+    } catch (error) {
+      setAccessMessage({ severity: 'error', text: 'Não foi possível salvar o perfil' });
+      throw error;
+    } finally {
+      setAccessSaving(false);
     }
   };
 
@@ -126,7 +235,27 @@ const UserPage = () => {
     item.name &&
     item.email &&
     (item.id || item.password || openIdForced) &&
-    (admin || !totpForce || item.totpKey);
+    (admin || !totpForce || item.totpKey) &&
+    !accessSaving &&
+    (!item.id || accessDirty);
+
+  const getPermissionStatus = (permission) => {
+    const restrictions = userAccess.nativeRestrictions;
+    const mutation = !permission.endsWith('.view');
+    if (mutation && restrictions?.readonly) {
+      return { label: 'Bloqueado por regra nativa Traccar', color: 'default' };
+    }
+    switch (permissionSource(effectiveAccess, permission)) {
+      case 'deny':
+        return { label: 'Negado por exceção', color: 'error' };
+      case 'allow':
+        return { label: 'Permitido por exceção', color: 'info' };
+      case 'profile':
+        return { label: 'Permitido pelo perfil', color: 'success' };
+      default:
+        return { label: 'Não permitido', color: 'default' };
+    }
+  };
 
   return (
     <EditItemView
@@ -135,7 +264,8 @@ const UserPage = () => {
       setItem={setItem}
       defaultItem={admin ? { deviceLimit: -1 } : {}}
       validate={validate}
-      onItemSaved={onItemSaved}
+      onSave={saveUser}
+      canSave={canSaveUser}
       menu={<SettingsMenu />}
       breadcrumbs={['settingsTitle', 'settingsUser']}
     >
@@ -351,11 +481,82 @@ const UserPage = () => {
               </Button>
             </AccordionDetails>
           </Accordion>
+          {admin && (
+            <Accordion defaultExpanded>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle1">Controle de acesso</Typography>
+              </AccordionSummary>
+              <AccordionDetails className={classes.details}>
+                <Alert severity={userAccess.profileId ? 'success' : 'info'}>
+                  {userAccess.profileId
+                    ? 'Gerenciado por Perfil de Acesso — Modo RBAC'
+                    : 'Modo legado Traccar'}
+                </Alert>
+                <FormControl>
+                  <InputLabel>Perfil de acesso</InputLabel>
+                  <Select
+                    label="Perfil de acesso"
+                    value={userAccess.profileId || 0}
+                    disabled={!canAssignProfile}
+                    onChange={(event) =>
+                      setUserAccess({
+                        ...userAccess,
+                        profileId: Number(event.target.value),
+                        effectiveAccess: null,
+                      })
+                    }
+                  >
+                    <MenuItem value={0}>Modo legado do Traccar</MenuItem>
+                    {accessProfiles.map((profile) => (
+                      <MenuItem key={profile.id} value={profile.id}>
+                        {profile.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Typography variant="body2" color="textSecondary">
+                  Perfil: {selectedProfile?.name || 'Nenhum — permissões nativas do Traccar'}
+                </Typography>
+                {effectiveAccess && (
+                  <>
+                    <Typography variant="body2" color="textSecondary">
+                      Permissões efetivas: {effectiveAccess.permissions.length} permitidas /{' '}
+                      {effectiveAccess.denied.length} negadas
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Escopo nativo: {userAccess.scope?.groups ?? 0} grupos e{' '}
+                      {userAccess.scope?.devices ?? 0} dispositivos vinculados
+                    </Typography>
+                    <Button variant="outlined" onClick={() => setEffectiveOpen(true)}>
+                      Visualizar permissões efetivas
+                    </Button>
+                  </>
+                )}
+                {userAccess.nativeRestrictions?.deviceReadonly && (
+                  <Alert severity="info">
+                    Editar dispositivo — bloqueado por deviceReadonly. As permissões específicas de
+                    aparência continuam disponíveis pela ação Personalizar veículo.
+                  </Alert>
+                )}
+                {!effectiveAccess && userAccess.profileId > 0 && (
+                  <Typography variant="body2" color="textSecondary">
+                    Salve o usuário para calcular as permissões efetivas do novo perfil.
+                  </Typography>
+                )}
+              </AccordionDetails>
+            </Accordion>
+          )}
           <Accordion>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="subtitle1">{t('sharedPermissions')}</Typography>
+              <Typography variant="subtitle1">
+                Restrições avançadas / Compatibilidade Traccar
+              </Typography>
             </AccordionSummary>
             <AccordionDetails className={classes.details}>
+              <Alert severity="warning">
+                Estas opções são bloqueios de segurança superiores ao perfil. Um Perfil de Acesso
+                nunca ignora estas restrições nem amplia o escopo de veículos.
+              </Alert>
               <TextField
                 label={t('userExpirationTime')}
                 type="date"
@@ -492,6 +693,48 @@ const UserPage = () => {
           )}
         </>
       )}
+      <Dialog open={effectiveOpen} onClose={() => setEffectiveOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Permissões efetivas</DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Escopo: {userAccess.scope?.groups ?? 0} grupos e {userAccess.scope?.devices ?? 0}{' '}
+            dispositivos. O perfil nunca amplia estes vínculos.
+          </Alert>
+          {effectiveModules.map((module) => (
+            <Accordion key={module.key} disableGutters variant="outlined">
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography>
+                  {module.label} {module.allowed}/{module.permissions.length}
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={1}>
+                  {module.permissions.map(([permission, label], index) => {
+                    const status = getPermissionStatus(permission);
+                    return (
+                      <Stack key={permission} spacing={1}>
+                        <Stack
+                          direction={{ xs: 'column', sm: 'row' }}
+                          spacing={1}
+                          justifyContent="space-between"
+                          alignItems={{ xs: 'flex-start', sm: 'center' }}
+                        >
+                          <Typography variant="body2">{label}</Typography>
+                          <Chip size="small" label={status.label} color={status.color} />
+                        </Stack>
+                        {index < module.permissions.length - 1 && <Divider />}
+                      </Stack>
+                    );
+                  })}
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+          ))}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEffectiveOpen(false)}>Fechar</Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={revokeDialogOpen} onClose={closeRevokeDialog} fullWidth maxWidth="xs">
         <DialogContent className={classes.details}>
           <TextField
@@ -509,6 +752,15 @@ const UserPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      <Snackbar
+        open={Boolean(accessMessage)}
+        autoHideDuration={5000}
+        onClose={() => setAccessMessage(null)}
+      >
+        <Alert severity={accessMessage?.severity} onClose={() => setAccessMessage(null)}>
+          {accessMessage?.text}
+        </Alert>
+      </Snackbar>
     </EditItemView>
   );
 };

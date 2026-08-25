@@ -15,6 +15,7 @@ import { errorsActions } from '../store';
 import MapScale from '../map/MapScale';
 import BackIcon from '../common/components/BackIcon';
 import fetchOrThrow from '../common/util/fetchOrThrow';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const useStyles = makeStyles()((theme) => ({
   root: {
@@ -57,6 +58,7 @@ const GeofencesPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const t = useTranslation();
+  const access = useAccessPermissions();
 
   const [selectedGeofenceId, setSelectedGeofenceId] = useState();
 
@@ -101,20 +103,22 @@ const GeofencesPage = () => {
             <Typography variant="h6" className={classes.title}>
               {t('sharedGeofences')}
             </Typography>
-            <label htmlFor="upload-gpx">
-              <input
-                accept=".gpx"
-                id="upload-gpx"
-                type="file"
-                className={classes.fileInput}
-                onChange={handleFile}
-              />
-              <IconButton edge="end" component="span" onClick={() => {}}>
-                <Tooltip title={t('sharedUpload')}>
-                  <UploadFileIcon />
-                </Tooltip>
-              </IconButton>
-            </label>
+            {access.can('geofence.create') && (
+              <label htmlFor="upload-gpx">
+                <input
+                  accept=".gpx"
+                  id="upload-gpx"
+                  type="file"
+                  className={classes.fileInput}
+                  onChange={handleFile}
+                />
+                <IconButton edge="end" component="span" onClick={() => {}}>
+                  <Tooltip title={t('sharedUpload')}>
+                    <UploadFileIcon />
+                  </Tooltip>
+                </IconButton>
+              </label>
+            )}
           </Toolbar>
           <Divider />
           <GeofencesList onGeofenceSelected={setSelectedGeofenceId} />

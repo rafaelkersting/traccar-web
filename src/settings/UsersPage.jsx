@@ -25,6 +25,7 @@ import SearchHeader from './components/SearchHeader';
 import useSettingsStyles from './common/useSettingsStyles';
 import fetchOrThrow from '../common/util/fetchOrThrow';
 import UserDevicesValue from './components/UserDevicesValue';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const UsersPage = () => {
   const { classes } = useSettingsStyles();
@@ -32,6 +33,7 @@ const UsersPage = () => {
   const t = useTranslation();
 
   const manager = useManager();
+  const access = useAccessPermissions();
 
   const [reloadKey, reload] = useReducer((k) => k + 1, 0);
   const [items, setItems] = useState([]);
@@ -117,7 +119,12 @@ const UsersPage = () => {
                     editPath="/settings/user"
                     endpoint="users"
                     onReload={reload}
-                    customActions={manager ? [actionLogin, actionConnections] : [actionConnections]}
+                    customActions={[
+                      ...(manager && access.can('user.edit') ? [actionLogin] : []),
+                      ...(access.can('user.link-scope') ? [actionConnections] : []),
+                    ]}
+                    canEdit={access.can('user.edit')}
+                    canDelete={access.can('user.delete')}
                   />
                 </TableCell>
               </TableRow>
@@ -144,7 +151,7 @@ const UsersPage = () => {
           </TableRow>
         </TableFooter>
       </Table>
-      <CollectionFab editPath="/settings/user" />
+      <CollectionFab editPath="/settings/user" disabled={!access.can('user.create')} />
     </PageLayout>
   );
 };

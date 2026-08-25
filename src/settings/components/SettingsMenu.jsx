@@ -14,12 +14,14 @@ import HelpIcon from '@mui/icons-material/Help';
 import PaymentIcon from '@mui/icons-material/Payment';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import CalculateIcon from '@mui/icons-material/Calculate';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useTranslation } from '../../common/components/LocalizationProvider';
 import { useAdministrator, useManager, useRestriction } from '../../common/util/permissions';
 import useFeatures from '../../common/util/useFeatures';
 import MenuItem from '../../common/components/MenuItem';
+import useAccessPermissions from '../../common/util/useAccessPermissions';
 
 const SettingsMenu = () => {
   const t = useTranslation();
@@ -33,43 +35,54 @@ const SettingsMenu = () => {
   const billingLink = useSelector((state) => state.session.user.attributes.billingLink);
 
   const features = useFeatures();
+  const access = useAccessPermissions();
 
   return (
     <>
       <List>
-        <MenuItem
-          title={t('sharedPreferences')}
-          link="/settings/preferences"
-          icon={<TuneIcon />}
-          selected={location.pathname === '/settings/preferences'}
-        />
+        {access.can('preference.view') && (
+          <MenuItem
+            title={t('sharedPreferences')}
+            link="/settings/preferences"
+            icon={<TuneIcon />}
+            selected={location.pathname === '/settings/preferences'}
+          />
+        )}
         {!readonly && (
           <>
-            <MenuItem
-              title={t('sharedNotifications')}
-              link="/settings/notifications"
-              icon={<NotificationsIcon />}
-              selected={location.pathname.startsWith('/settings/notification')}
-            />
-            <MenuItem
-              title={t('settingsUser')}
-              link={`/settings/user/${userId}`}
-              icon={<PersonIcon />}
-              selected={location.pathname === `/settings/user/${userId}`}
-            />
-            <MenuItem
-              title={t('deviceTitle')}
-              link="/settings/devices"
-              icon={<DnsIcon />}
-              selected={location.pathname.startsWith('/settings/device')}
-            />
-            <MenuItem
-              title={t('sharedGeofences')}
-              link="/geofences"
-              icon={<DrawIcon />}
-              selected={location.pathname.startsWith('/settings/geofence')}
-            />
-            {!features.disableGroups && (
+            {access.can('notification.view') && (
+              <MenuItem
+                title={t('sharedNotifications')}
+                link="/settings/notifications"
+                icon={<NotificationsIcon />}
+                selected={location.pathname.startsWith('/settings/notification')}
+              />
+            )}
+            {(access.can('preference.view') || access.can('preference.edit')) && (
+              <MenuItem
+                title={t('settingsUser')}
+                link={`/settings/user/${userId}`}
+                icon={<PersonIcon />}
+                selected={location.pathname === `/settings/user/${userId}`}
+              />
+            )}
+            {access.can('device.view') && (
+              <MenuItem
+                title={t('deviceTitle')}
+                link="/settings/devices"
+                icon={<DnsIcon />}
+                selected={location.pathname.startsWith('/settings/device')}
+              />
+            )}
+            {access.can('geofence.view') && (
+              <MenuItem
+                title={t('sharedGeofences')}
+                link="/geofences"
+                icon={<DrawIcon />}
+                selected={location.pathname.startsWith('/settings/geofence')}
+              />
+            )}
+            {!features.disableGroups && access.can('group.view') && (
               <MenuItem
                 title={t('settingsGroups')}
                 link="/settings/groups"
@@ -77,7 +90,7 @@ const SettingsMenu = () => {
                 selected={location.pathname.startsWith('/settings/group')}
               />
             )}
-            {!features.disableDrivers && (
+            {!features.disableDrivers && access.can('driver.view') && (
               <MenuItem
                 title={t('sharedDrivers')}
                 link="/settings/drivers"
@@ -85,7 +98,7 @@ const SettingsMenu = () => {
                 selected={location.pathname.startsWith('/settings/driver')}
               />
             )}
-            {!features.disableCalendars && (
+            {!features.disableCalendars && access.can('calendar.view') && (
               <MenuItem
                 title={t('sharedCalendars')}
                 link="/settings/calendars"
@@ -93,7 +106,7 @@ const SettingsMenu = () => {
                 selected={location.pathname.startsWith('/settings/calendar')}
               />
             )}
-            {!features.disableComputedAttributes && (
+            {!features.disableComputedAttributes && access.can('attribute.view') && (
               <MenuItem
                 title={t('sharedComputedAttributes')}
                 link="/settings/attributes"
@@ -101,7 +114,7 @@ const SettingsMenu = () => {
                 selected={location.pathname.startsWith('/settings/attribute')}
               />
             )}
-            {!features.disableMaintenance && (
+            {!features.disableMaintenance && access.can('maintenance.view') && (
               <MenuItem
                 title={t('sharedMaintenance')}
                 link="/settings/maintenances"
@@ -109,7 +122,7 @@ const SettingsMenu = () => {
                 selected={location.pathname.startsWith('/settings/maintenance')}
               />
             )}
-            {!features.disableSavedCommands && (
+            {!features.disableSavedCommands && access.can('command.view') && (
               <MenuItem
                 title={t('sharedSavedCommands')}
                 link="/settings/commands"
@@ -130,13 +143,23 @@ const SettingsMenu = () => {
         <>
           <Divider />
           <List>
-            <MenuItem
-              title={t('serverAnnouncement')}
-              link="/settings/announcement"
-              icon={<CampaignIcon />}
-              selected={location.pathname === '/settings/announcement'}
-            />
-            {admin && (
+            {access.can('announcement.view') && (
+              <MenuItem
+                title={t('serverAnnouncement')}
+                link="/settings/announcement"
+                icon={<CampaignIcon />}
+                selected={location.pathname === '/settings/announcement'}
+              />
+            )}
+            {admin && access.can('access-profile.view') && (
+              <MenuItem
+                title="Perfis de Acesso"
+                link="/settings/access-profiles"
+                icon={<AdminPanelSettingsIcon />}
+                selected={location.pathname === '/settings/access-profiles'}
+              />
+            )}
+            {admin && access.can('server.view') && (
               <MenuItem
                 title={t('settingsServer')}
                 link="/settings/server"
@@ -144,15 +167,17 @@ const SettingsMenu = () => {
                 selected={location.pathname === '/settings/server'}
               />
             )}
-            <MenuItem
-              title={t('settingsUsers')}
-              link="/settings/users"
-              icon={<PeopleIcon />}
-              selected={
-                location.pathname.startsWith('/settings/user') &&
-                location.pathname !== `/settings/user/${userId}`
-              }
-            />
+            {access.can('user.view') && (
+              <MenuItem
+                title={t('settingsUsers')}
+                link="/settings/users"
+                icon={<PeopleIcon />}
+                selected={
+                  location.pathname.startsWith('/settings/user') &&
+                  location.pathname !== `/settings/user/${userId}`
+                }
+              />
+            )}
           </List>
         </>
       )}

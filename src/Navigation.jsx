@@ -9,6 +9,7 @@ import { devicesActions } from './store';
 import { generateLoginToken } from './common/components/NativeInterface';
 import { useLocalization } from './common/components/LocalizationProvider';
 import fetchOrThrow from './common/util/fetchOrThrow';
+import RequireAccess from './common/components/RequireAccess';
 
 const CombinedReportPage = lazy(() => import('./reports/CombinedReportPage'));
 const PositionsReportPage = lazy(() => import('./reports/PositionsReportPage'));
@@ -62,6 +63,7 @@ const AnnouncementPage = lazy(() => import('./settings/AnnouncementPage'));
 const EmulatorPage = lazy(() => import('./other/EmulatorPage'));
 const StreamPage = lazy(() => import('./other/StreamPage'));
 const AuditPage = lazy(() => import('./reports/AuditPage'));
+const AccessProfilesPage = lazy(() => import('./settings/AccessProfilesPage'));
 
 const Navigation = () => {
   const dispatch = useDispatch();
@@ -127,71 +129,479 @@ const Navigation = () => {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/change-server" element={<ChangeServerPage />} />
         <Route path="/" element={<App />}>
-          <Route index element={<MainPage />} />
+          <Route
+            index
+            element={
+              <RequireAccess permission="map.view">
+                <MainPage />
+              </RequireAccess>
+            }
+          />
 
-          <Route path="position/:id" element={<PositionPage />} />
-          <Route path="network/:positionId" element={<NetworkPage />} />
-          <Route path="event/:id" element={<EventPage />} />
-          <Route path="replay" element={<ReplayPage />} />
-          <Route path="geofences" element={<GeofencesPage />} />
+          <Route
+            path="position/:id"
+            element={
+              <RequireAccess permission="map.history">
+                <PositionPage />
+              </RequireAccess>
+            }
+          />
+          <Route
+            path="network/:positionId"
+            element={
+              <RequireAccess permission="map.history">
+                <NetworkPage />
+              </RequireAccess>
+            }
+          />
+          <Route
+            path="event/:id"
+            element={
+              <RequireAccess permission="report.view">
+                <EventPage />
+              </RequireAccess>
+            }
+          />
+          <Route
+            path="replay"
+            element={
+              <RequireAccess permission="map.history">
+                <ReplayPage />
+              </RequireAccess>
+            }
+          />
+          <Route
+            path="geofences"
+            element={
+              <RequireAccess permission="geofence.view">
+                <GeofencesPage />
+              </RequireAccess>
+            }
+          />
           <Route path="emulator" element={<EmulatorPage />} />
           <Route path="stream" element={<StreamPage />} />
 
           <Route path="settings">
             <Route path=":type/:id/share" element={<SharePage />} />
-            <Route path="accumulators/:deviceId" element={<AccumulatorsPage />} />
-            <Route path="announcement" element={<AnnouncementPage />} />
-            <Route path="calendars" element={<CalendarsPage />} />
-            <Route path="calendar/:id" element={<CalendarPage />} />
-            <Route path="calendar" element={<CalendarPage />} />
-            <Route path="commands" element={<CommandsPage />} />
-            <Route path="command/:id" element={<CommandPage />} />
-            <Route path="command" element={<CommandPage />} />
-            <Route path="attributes" element={<ComputedAttributesPage />} />
-            <Route path="attribute/:id" element={<ComputedAttributePage />} />
-            <Route path="attribute" element={<ComputedAttributePage />} />
-            <Route path="devices" element={<DevicesPage />} />
-            <Route path="device/:id/connections" element={<DeviceConnectionsPage />} />
-            <Route path="device/:id/command" element={<CommandDevicePage />} />
-            <Route path="device/:id" element={<DevicePage />} />
-            <Route path="device" element={<DevicePage />} />
-            <Route path="drivers" element={<DriversPage />} />
-            <Route path="driver/:id" element={<DriverPage />} />
-            <Route path="driver" element={<DriverPage />} />
-            <Route path="geofence/:id" element={<GeofencePage />} />
-            <Route path="geofence" element={<GeofencePage />} />
-            <Route path="groups" element={<GroupsPage />} />
-            <Route path="group/:id/connections" element={<GroupConnectionsPage />} />
-            <Route path="group/:id/command" element={<CommandGroupPage />} />
-            <Route path="group/:id" element={<GroupPage />} />
-            <Route path="group" element={<GroupPage />} />
-            <Route path="maintenances" element={<MaintenancesPage />} />
-            <Route path="maintenance/:id" element={<MaintenancePage />} />
-            <Route path="maintenance" element={<MaintenancePage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="notification/:id" element={<NotificationPage />} />
-            <Route path="notification" element={<NotificationPage />} />
-            <Route path="preferences" element={<PreferencesPage />} />
-            <Route path="server" element={<ServerPage />} />
-            <Route path="users" element={<UsersPage />} />
-            <Route path="user/:id/connections" element={<UserConnectionsPage />} />
-            <Route path="user/:id" element={<UserPage />} />
-            <Route path="user" element={<UserPage />} />
+            <Route
+              path="accumulators/:deviceId"
+              element={
+                <RequireAccess permission="device.edit">
+                  <AccumulatorsPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="announcement"
+              element={
+                <RequireAccess permission="announcement.view">
+                  <AnnouncementPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="calendars"
+              element={
+                <RequireAccess permission="calendar.view">
+                  <CalendarsPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="calendar/:id"
+              element={
+                <RequireAccess permission="calendar.edit">
+                  <CalendarPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="calendar"
+              element={
+                <RequireAccess permission="calendar.create">
+                  <CalendarPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="commands"
+              element={
+                <RequireAccess permission="command.view">
+                  <CommandsPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="command/:id"
+              element={
+                <RequireAccess permission="command.edit">
+                  <CommandPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="command"
+              element={
+                <RequireAccess permission="command.create">
+                  <CommandPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="attributes"
+              element={
+                <RequireAccess permission="attribute.view">
+                  <ComputedAttributesPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="attribute/:id"
+              element={
+                <RequireAccess permission="attribute.edit">
+                  <ComputedAttributePage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="attribute"
+              element={
+                <RequireAccess permission="attribute.create">
+                  <ComputedAttributePage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="devices"
+              element={
+                <RequireAccess permission="device.view">
+                  <DevicesPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="device/:id/connections"
+              element={
+                <RequireAccess permission="user.link-scope">
+                  <DeviceConnectionsPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="device/:id/command"
+              element={
+                <RequireAccess permission="command.send">
+                  <CommandDevicePage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="device/:id/appearance"
+              element={
+                <RequireAccess permission="device.appearance.view">
+                  <DevicePage appearanceOnly />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="device/:id"
+              element={
+                <RequireAccess permission="device.edit">
+                  <DevicePage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="device"
+              element={
+                <RequireAccess permission="device.create">
+                  <DevicePage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="drivers"
+              element={
+                <RequireAccess permission="driver.view">
+                  <DriversPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="driver/:id"
+              element={
+                <RequireAccess permission="driver.edit">
+                  <DriverPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="driver"
+              element={
+                <RequireAccess permission="driver.create">
+                  <DriverPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="geofence/:id"
+              element={
+                <RequireAccess permission="geofence.edit">
+                  <GeofencePage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="geofence"
+              element={
+                <RequireAccess permission="geofence.create">
+                  <GeofencePage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="groups"
+              element={
+                <RequireAccess permission="group.view">
+                  <GroupsPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="group/:id/connections"
+              element={
+                <RequireAccess permission="user.link-scope">
+                  <GroupConnectionsPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="group/:id/command"
+              element={
+                <RequireAccess permission="command.send">
+                  <CommandGroupPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="group/:id"
+              element={
+                <RequireAccess permission="group.edit">
+                  <GroupPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="group"
+              element={
+                <RequireAccess permission="group.create">
+                  <GroupPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="maintenances"
+              element={
+                <RequireAccess permission="maintenance.view">
+                  <MaintenancesPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="maintenance/:id"
+              element={
+                <RequireAccess permission="maintenance.edit">
+                  <MaintenancePage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="maintenance"
+              element={
+                <RequireAccess permission="maintenance.create">
+                  <MaintenancePage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="notifications"
+              element={
+                <RequireAccess permission="notification.view">
+                  <NotificationsPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="notification/:id"
+              element={
+                <RequireAccess permission="notification.edit">
+                  <NotificationPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="notification"
+              element={
+                <RequireAccess permission="notification.create">
+                  <NotificationPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="preferences"
+              element={
+                <RequireAccess permission="preference.view">
+                  <PreferencesPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="server"
+              element={
+                <RequireAccess permission="server.view">
+                  <ServerPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="access-profiles"
+              element={
+                <RequireAccess permission="access-profile.view">
+                  <AccessProfilesPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="users"
+              element={
+                <RequireAccess permission="user.view">
+                  <UsersPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="user/:id/connections"
+              element={
+                <RequireAccess permission="user.link-scope">
+                  <UserConnectionsPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="user/:id"
+              element={
+                <RequireAccess permission={['user.edit', 'preference.view']}>
+                  <UserPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="user"
+              element={
+                <RequireAccess permission="user.create">
+                  <UserPage />
+                </RequireAccess>
+              }
+            />
           </Route>
 
           <Route path="reports">
-            <Route path="combined" element={<CombinedReportPage />} />
-            <Route path="chart" element={<ChartReportPage />} />
-            <Route path="events" element={<EventReportPage />} />
-            <Route path="geofences" element={<GeofenceReportPage />} />
-            <Route path="route" element={<PositionsReportPage />} />
-            <Route path="stops" element={<StopReportPage />} />
-            <Route path="summary" element={<SummaryReportPage />} />
-            <Route path="trips" element={<TripReportPage />} />
-            <Route path="scheduled" element={<ScheduledPage />} />
-            <Route path="statistics" element={<StatisticsPage />} />
-            <Route path="audit" element={<AuditPage />} />
-            <Route path="logs" element={<LogsPage />} />
+            <Route
+              path="combined"
+              element={
+                <RequireAccess permission="report.view">
+                  <CombinedReportPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="chart"
+              element={
+                <RequireAccess permission="report.view">
+                  <ChartReportPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="events"
+              element={
+                <RequireAccess permission="report.view">
+                  <EventReportPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="geofences"
+              element={
+                <RequireAccess permission="report.view">
+                  <GeofenceReportPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="route"
+              element={
+                <RequireAccess permission="report.view">
+                  <PositionsReportPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="stops"
+              element={
+                <RequireAccess permission="report.view">
+                  <StopReportPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="summary"
+              element={
+                <RequireAccess permission="report.view">
+                  <SummaryReportPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="trips"
+              element={
+                <RequireAccess permission="report.view">
+                  <TripReportPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="scheduled"
+              element={
+                <RequireAccess permission="report.view">
+                  <ScheduledPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="statistics"
+              element={
+                <RequireAccess permission="report.view">
+                  <StatisticsPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="audit"
+              element={
+                <RequireAccess permission="report.view">
+                  <AuditPage />
+                </RequireAccess>
+              }
+            />
+            <Route
+              path="logs"
+              element={
+                <RequireAccess permission="report.view">
+                  <LogsPage />
+                </RequireAccess>
+              }
+            />
           </Route>
         </Route>
       </Routes>

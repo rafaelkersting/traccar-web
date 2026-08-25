@@ -7,6 +7,7 @@ import { geofencesActions } from '../store';
 import CollectionActions from '../settings/components/CollectionActions';
 import { useCatchCallback } from '../reactHelper';
 import fetchOrThrow from '../common/util/fetchOrThrow';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const useStyles = makeStyles()(() => ({
   list: {
@@ -23,6 +24,7 @@ const useStyles = makeStyles()(() => ({
 const GeofencesList = ({ onGeofenceSelected }) => {
   const { classes } = useStyles();
   const dispatch = useDispatch();
+  const access = useAccessPermissions();
 
   const items = useSelector((state) => state.geofences.items);
 
@@ -42,6 +44,8 @@ const GeofencesList = ({ onGeofenceSelected }) => {
               editPath="/settings/geofence"
               endpoint="geofences"
               onReload={refreshGeofences}
+              canEdit={access.can('geofence.edit')}
+              canDelete={access.can('geofence.delete')}
             />
           </ListItemButton>
           {index < list.length - 1 ? <Divider /> : null}
