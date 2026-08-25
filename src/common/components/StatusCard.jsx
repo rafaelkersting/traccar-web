@@ -45,6 +45,7 @@ import { getDeviceImageUrl } from '../util/deviceImage';
 import VehicleStatusActions from './VehicleStatusActions';
 import { statusCardModes } from '../../store/mapUi';
 import useAccessPermissions from '../util/useAccessPermissions';
+import { defaultVehicleFollowMode } from '../../map/core/vehicleFollow';
 
 const useStyles = makeStyles()((theme, { desktopPadding }) => ({
   card: {
@@ -222,7 +223,7 @@ const StatusCard = ({
   onExpand,
   mode = statusCardModes.expanded,
   followActive = false,
-  followMode = 'north',
+  followMode = defaultVehicleFollowMode,
   disableActions,
   desktopPadding = 0,
 }) => {
@@ -307,6 +308,7 @@ const StatusCard = ({
             default={{ x: 0, y: 0, width: 'auto', height: 'auto' }}
             enableResizing={false}
             dragHandleClassName="draggable-header"
+            cancel=".status-card-no-drag"
             style={{ position: 'relative' }}
           >
             {collapsed ? (
@@ -342,6 +344,7 @@ const StatusCard = ({
                   <div className={classes.headerActions}>
                     <Tooltip title="Expandir detalhes do veículo">
                       <IconButton
+                        className="status-card-no-drag"
                         size="small"
                         aria-label="Expandir detalhes do veículo"
                         onClick={onExpand}
@@ -351,6 +354,7 @@ const StatusCard = ({
                     </Tooltip>
                     <Tooltip title="Fechar detalhes do veículo">
                       <IconButton
+                        className="status-card-no-drag"
                         size="small"
                         aria-label="Fechar detalhes do veículo"
                         onClick={onClose}
@@ -372,6 +376,7 @@ const StatusCard = ({
                       {onCollapse && (
                         <Tooltip title="Minimizar detalhes do veículo">
                           <IconButton
+                            className="status-card-no-drag"
                             size="small"
                             color="inherit"
                             aria-label="Minimizar detalhes do veículo"
@@ -383,6 +388,7 @@ const StatusCard = ({
                       )}
                       <Tooltip title="Fechar detalhes do veículo">
                         <IconButton
+                          className="status-card-no-drag"
                           size="small"
                           color="inherit"
                           aria-label="Fechar detalhes do veículo"

@@ -10,8 +10,10 @@ export const vehicleFollowModes = Object.freeze({
   heading: 'heading',
 });
 
+export const defaultVehicleFollowMode = vehicleFollowModes.heading;
+
 export const normalizeVehicleFollowMode = (value) =>
-  Object.values(vehicleFollowModes).includes(value) ? value : vehicleFollowModes.north;
+  Object.values(vehicleFollowModes).includes(value) ? value : defaultVehicleFollowMode;
 
 export const shortestCourseDelta = (from, to) => {
   const start = normalizeCourse(from);

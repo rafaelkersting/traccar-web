@@ -8,6 +8,7 @@ import usePersistedState from '../../common/util/usePersistedState';
 import { toMapCoordinates } from '../core/mapUtil';
 import { isPositionMoving } from '../core/deviceMarkerMotion';
 import {
+  defaultVehicleFollowMode,
   isValidFollowPosition,
   normalizeVehicleFollowMode,
   resolveFollowBearing,
@@ -37,7 +38,7 @@ const MapSelectedDevice = () => {
   const autoFollow = useAttributePreference('mapFollow', true);
   const [storedMode, setStoredMode] = usePersistedState(
     'vehicleFollowMode',
-    vehicleFollowModes.north,
+    defaultVehicleFollowMode,
   );
   const mode = normalizeVehicleFollowMode(storedMode);
   const [paused, setPaused] = useState(false);
