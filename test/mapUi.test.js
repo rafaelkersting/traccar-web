@@ -21,6 +21,12 @@ test('minimizing details preserves active Follow and Heading Up', () => {
   assert.equal(state.followMode, 'heading');
 });
 
+test('Heading Up is the initial Follow mode', () => {
+  const state = mapUiReducer(undefined, { type: 'init' });
+
+  assert.equal(state.followMode, 'heading');
+});
+
 test('closing details preserves active Follow and Heading Up', () => {
   const state = mapUiReducer(followState(), mapUiActions.setDetailsMode(statusCardModes.closed));
 

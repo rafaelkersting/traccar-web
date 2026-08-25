@@ -1,4 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
+import { defaultVehicleFollowMode } from '../map/core/vehicleFollow.js';
 
 export const statusCardModes = Object.freeze({
   expanded: 'expanded',
@@ -14,7 +15,7 @@ const { reducer, actions } = createSlice({
     detailsMode: statusCardModes.closed,
     followAvailable: false,
     followPaused: true,
-    followMode: 'north',
+    followMode: defaultVehicleFollowMode,
   },
   reducers: {
     setDetailsMode(state, action) {

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  defaultVehicleFollowMode,
   isValidFollowPosition,
   normalizeVehicleFollowMode,
   resolveBearingTarget,
@@ -48,8 +49,14 @@ test('Norte mantém bearing zero e Heading Up acompanha o veículo sem rotação
   assert.equal(resolveFollowBearing(vehicleFollowModes.heading, 20, null), null);
 });
 
-test('modo inválido volta para Norte e offset Heading Up favorece a via à frente', () => {
-  assert.equal(normalizeVehicleFollowMode('desconhecido'), vehicleFollowModes.north);
+test('Heading Up é o padrão e a preferência Norte explícita continua válida', () => {
+  assert.equal(defaultVehicleFollowMode, vehicleFollowModes.heading);
+  assert.equal(normalizeVehicleFollowMode(undefined), vehicleFollowModes.heading);
+  assert.equal(normalizeVehicleFollowMode('desconhecido'), vehicleFollowModes.heading);
+  assert.equal(normalizeVehicleFollowMode(vehicleFollowModes.north), vehicleFollowModes.north);
+});
+
+test('offset Heading Up favorece a via à frente', () => {
   assert.deepEqual(resolveFollowOffset(vehicleFollowModes.north, 800, false), [0, 0]);
   assert.deepEqual(resolveFollowOffset(vehicleFollowModes.heading, 800, false), [0, 112]);
   assert.deepEqual(resolveFollowOffset(vehicleFollowModes.heading, 800, true), [0, 64]);
