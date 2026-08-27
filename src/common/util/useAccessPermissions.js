@@ -2,17 +2,16 @@ import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useSelector } from 'react-redux';
 import fetchOrThrow from './fetchOrThrow';
 import { hasAccessPermission } from './accessPermissions';
+import {
+  completeAccessLoad,
+  createEmptyAccessState,
+  failAccessLoad,
+} from './accessPermissionState';
 
 let userId;
 let request;
-let state = {
-  loaded: false,
-  legacy: false,
-  permissions: [],
-  profilePermissions: [],
-  allowedOverrides: [],
-  denied: [],
-};
+let requestUserId;
+let state = createEmptyAccessState();
 const listeners = new Set();
 let refreshTimer;
 
@@ -49,37 +48,42 @@ const load = (nextUserId, force = false) => {
   if (!nextUserId) {
     userId = nextUserId;
     request = null;
-    emit({ ...state, loaded: false, legacy: false });
-    return;
+    requestUserId = null;
+    emit(createEmptyAccessState());
+    return Promise.resolve();
   }
   if (!force && userId === nextUserId && (request || state.loaded)) {
-    return;
+    return request || Promise.resolve();
   }
+  if (request && requestUserId === nextUserId) {
+    return request;
+  }
+  const background = userId === nextUserId && state.loaded;
   userId = nextUserId;
-  emit({ ...state, loaded: false, legacy: false, error: null });
-  request = fetchOrThrow('/api/access/session')
+  if (!background) {
+    emit(createEmptyAccessState());
+  }
+  requestUserId = nextUserId;
+  const currentRequest = fetchOrThrow('/api/access/session')
     .then((response) => response.json())
     .then((access) => {
       if (userId === nextUserId) {
-        emit({ ...access, loaded: true, error: null });
+        emit(completeAccessLoad(access));
       }
     })
     .catch((error) => {
       if (userId === nextUserId) {
-        emit({
-          loaded: true,
-          legacy: false,
-          permissions: [],
-          profilePermissions: [],
-          allowedOverrides: [],
-          denied: [],
-          error: error.message,
-        });
+        emit(failAccessLoad(state, error, background));
       }
     })
     .finally(() => {
-      request = null;
+      if (request === currentRequest) {
+        request = null;
+        requestUserId = null;
+      }
     });
+  request = currentRequest;
+  return currentRequest;
 };
 
 export const refreshAccessPermissions = () => load(userId, true);
