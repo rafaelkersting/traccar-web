@@ -126,6 +126,23 @@ export const ACCESS_MODULES = [
       ['user.delete', 'Excluir'],
       ['user.assign-profile', 'Atribuir Perfil de Acesso'],
       ['user.link-scope', 'Vincular dispositivos e grupos'],
+      ['user.access-control.edit', 'Alterar controle de acesso'],
+      ['user.native-restrictions.edit', 'Alterar restrições nativas'],
+      ['user.attributes.edit', 'Alterar atributos de outros usuários'],
+    ],
+  },
+  {
+    key: 'account',
+    label: 'Conta do Usuário',
+    permissions: [
+      ['account.view', 'Visualizar conta'],
+      ['account.basic.edit', 'Alterar nome'],
+      ['account.email.edit', 'Alterar e-mail'],
+      ['account.password.change', 'Alterar senha'],
+      ['account.security.edit', 'Alterar segurança e TOTP'],
+      ['account.preferences.edit', 'Alterar preferências pessoais'],
+      ['account.location.edit', 'Alterar localização padrão'],
+      ['account.attributes.edit', 'Alterar atributos da própria conta'],
     ],
   },
   {

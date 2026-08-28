@@ -58,7 +58,7 @@ const SettingsMenu = () => {
                 selected={location.pathname.startsWith('/settings/notification')}
               />
             )}
-            {(access.can('preference.view') || access.can('preference.edit')) && (
+            {access.can('account.view') && (
               <MenuItem
                 title={t('settingsUser')}
                 link={`/settings/user/${userId}`}

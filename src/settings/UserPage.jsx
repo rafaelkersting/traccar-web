@@ -51,6 +51,7 @@ import { ACCESS_MODULES, permissionSource } from '../common/util/accessPermissio
 import useAccessPermissions, {
   refreshAccessPermissions,
 } from '../common/util/useAccessPermissions';
+import { getUserAccountCapabilities } from '../common/util/userAccountPermissions';
 
 const UserPage = () => {
   const { classes } = useSettingsStyles();
@@ -74,10 +75,32 @@ const UserPage = () => {
   const userAttributes = useUserAttributes(t);
 
   const { id } = useParams();
-  const [item, setItem] = useState(id === currentUser.id.toString() ? currentUser : null);
+  const self = id === currentUser.id.toString();
+  const creating = !id;
+  const capabilities = getUserAccountCapabilities({
+    can: access.can,
+    self,
+    creating,
+    manager,
+    administrator: admin,
+  });
+  const {
+    basic: canEditBasic,
+    email: canEditEmail,
+    password: canChangePassword,
+    security: canEditSecurity,
+    preferences: canEditPreferences,
+    location: canEditLocation,
+    attributes: canEditAttributes,
+    nativeRestrictions: canEditNativeRestrictions,
+    accessControl: canManageAccess,
+    editOther: canEditOther,
+  } = capabilities;
+
+  const [item, setItem] = useState(self ? currentUser : null);
   const [accessProfiles, setAccessProfiles] = useState([]);
   const [userAccess, setUserAccess] = useState({ profileId: 0, overrides: [] });
-  const [accessLoaded, setAccessLoaded] = useState(!admin);
+  const [accessLoaded, setAccessLoaded] = useState(!canManageAccess);
   const [accessSaving, setAccessSaving] = useState(false);
   const [accessMessage, setAccessMessage] = useState(null);
   const [effectiveOpen, setEffectiveOpen] = useState(false);
@@ -85,7 +108,7 @@ const UserPage = () => {
   const initialProfileIdRef = useRef(null);
 
   useEffect(() => {
-    if (!admin) {
+    if (!canManageAccess) {
       return undefined;
     }
     const controller = new AbortController();
@@ -105,7 +128,7 @@ const UserPage = () => {
       setAccessLoaded(true);
     });
     return () => controller.abort();
-  }, [admin, id]);
+  }, [canManageAccess, id]);
 
   useEffect(() => {
     if (item && accessLoaded && initialSnapshotRef.current === null) {
@@ -120,10 +143,21 @@ const UserPage = () => {
     initialSnapshotRef.current !== JSON.stringify({ item, profileId: userAccess.profileId });
   const profileAssignmentDirty =
     initialProfileIdRef.current !== null && initialProfileIdRef.current !== userAccess.profileId;
-  const canAssignProfile = access.can('user.assign-profile') && access.can('access-profile.assign');
-  const canSaveUser = id
-    ? access.can(id === currentUser.id.toString() ? 'preference.edit' : 'user.edit')
-    : access.can('user.create');
+  const canAssignProfile =
+    canManageAccess && access.can('user.assign-profile') && access.can('access-profile.assign');
+  const canSaveUser = creating
+    ? access.can('user.create')
+    : self
+      ? [
+          canEditBasic,
+          canEditEmail,
+          canChangePassword,
+          canEditSecurity,
+          canEditPreferences,
+          canEditLocation,
+          canEditAttributes,
+        ].some(Boolean)
+      : canEditOther || canAssignProfile;
 
   const effectiveModules = useMemo(
     () =>
@@ -196,7 +230,7 @@ const UserPage = () => {
       });
       const result = await response.json();
       let savedAccess = userAccess;
-      if (admin && profileAssignmentDirty) {
+      if (canAssignProfile && profileAssignmentDirty) {
         const accessResponse = await fetchOrThrow(`/api/access/users/${result.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -280,17 +314,19 @@ const UserPage = () => {
                 value={item.name || ''}
                 onChange={(e) => setItem({ ...item, name: e.target.value })}
                 label={t('sharedName')}
+                disabled={!canEditBasic}
               />
               <TextField
                 value={item.email || ''}
                 onChange={(e) => setItem({ ...item, email: e.target.value })}
                 label={t('userEmail')}
-                disabled={fixedEmail && item.id === currentUser.id}
+                disabled={!canEditEmail || (fixedEmail && item.id === currentUser.id)}
               />
               {!openIdForced && (
                 <PasswordField
                   onChange={(e) => setItem({ ...item, password: e.target.value })}
                   label={t('userPassword')}
+                  disabled={!canChangePassword}
                 />
               )}
               {totpEnable && (
@@ -302,13 +338,19 @@ const UserPage = () => {
                     value={item.totpKey || ''}
                     endAdornment={
                       <InputAdornment position="end">
-                        <IconButton size="small" edge="end" onClick={handleGenerateTotp}>
+                        <IconButton
+                          size="small"
+                          edge="end"
+                          onClick={handleGenerateTotp}
+                          disabled={!canEditSecurity}
+                        >
                           <CachedIcon fontSize="small" />
                         </IconButton>
                         <IconButton
                           size="small"
                           edge="end"
                           onClick={() => setItem({ ...item, totpKey: null })}
+                          disabled={!canEditSecurity}
                         >
                           <CloseIcon fontSize="small" />
                         </IconButton>
@@ -328,6 +370,7 @@ const UserPage = () => {
                 value={item.phone || ''}
                 onChange={(e) => setItem({ ...item, phone: e.target.value })}
                 label={t('sharedPhone')}
+                disabled={!canEditPreferences}
               />
               <FormControl>
                 <InputLabel>{t('mapDefault')}</InputLabel>
@@ -335,6 +378,7 @@ const UserPage = () => {
                   label={t('mapDefault')}
                   value={item.map || 'locationIqStreets'}
                   onChange={(e) => setItem({ ...item, map: e.target.value })}
+                  disabled={!canEditPreferences}
                 >
                   {mapStyles
                     .filter((style) => style.available)
@@ -351,6 +395,7 @@ const UserPage = () => {
                   label={t('settingsCoordinateFormat')}
                   value={item.coordinateFormat || 'dd'}
                   onChange={(e) => setItem({ ...item, coordinateFormat: e.target.value })}
+                  disabled={!canEditPreferences}
                 >
                   <MenuItem value="dd">{t('sharedDecimalDegrees')}</MenuItem>
                   <MenuItem value="ddm">{t('sharedDegreesDecimalMinutes')}</MenuItem>
@@ -368,6 +413,7 @@ const UserPage = () => {
                       attributes: { ...item.attributes, speedUnit: e.target.value },
                     })
                   }
+                  disabled={!canEditPreferences}
                 >
                   <MenuItem value="kn">{t('sharedKn')}</MenuItem>
                   <MenuItem value="kmh">{t('sharedKmh')}</MenuItem>
@@ -385,6 +431,7 @@ const UserPage = () => {
                       attributes: { ...item.attributes, distanceUnit: e.target.value },
                     })
                   }
+                  disabled={!canEditPreferences}
                 >
                   <MenuItem value="km">{t('sharedKm')}</MenuItem>
                   <MenuItem value="mi">{t('sharedMi')}</MenuItem>
@@ -402,6 +449,7 @@ const UserPage = () => {
                       attributes: { ...item.attributes, altitudeUnit: e.target.value },
                     })
                   }
+                  disabled={!canEditPreferences}
                 >
                   <MenuItem value="m">{t('sharedMeters')}</MenuItem>
                   <MenuItem value="ft">{t('sharedFeet')}</MenuItem>
@@ -418,6 +466,7 @@ const UserPage = () => {
                       attributes: { ...item.attributes, volumeUnit: e.target.value },
                     })
                   }
+                  disabled={!canEditPreferences}
                 >
                   <MenuItem value="ltr">{t('sharedLiter')}</MenuItem>
                   <MenuItem value="usGal">{t('sharedUsGallon')}</MenuItem>
@@ -433,11 +482,13 @@ const UserPage = () => {
                 keyGetter={(it) => it}
                 titleGetter={(it) => it}
                 label={t('sharedTimezone')}
+                disabled={!canEditPreferences}
               />
               <TextField
                 value={item.poiLayer || ''}
                 onChange={(e) => setItem({ ...item, poiLayer: e.target.value })}
                 label={t('mapPoiLayer')}
+                disabled={!canEditPreferences}
               />
             </AccordionDetails>
           </Accordion>
@@ -451,18 +502,21 @@ const UserPage = () => {
                 value={item.latitude || 0}
                 onChange={(e) => setItem({ ...item, latitude: Number(e.target.value) })}
                 label={t('positionLatitude')}
+                disabled={!canEditLocation}
               />
               <TextField
                 type="number"
                 value={item.longitude || 0}
                 onChange={(e) => setItem({ ...item, longitude: Number(e.target.value) })}
                 label={t('positionLongitude')}
+                disabled={!canEditLocation}
               />
               <TextField
                 type="number"
                 value={item.zoom || 0}
                 onChange={(e) => setItem({ ...item, zoom: Number(e.target.value) })}
                 label={t('serverZoom')}
+                disabled={!canEditLocation}
               />
               <Button
                 variant="outlined"
@@ -476,12 +530,13 @@ const UserPage = () => {
                     zoom: Number(map.getZoom().toFixed(1)),
                   });
                 }}
+                disabled={!canEditLocation}
               >
                 {t('mapCurrentLocation')}
               </Button>
             </AccordionDetails>
           </Accordion>
-          {admin && (
+          {canManageAccess && (
             <Accordion defaultExpanded>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="subtitle1">Controle de acesso</Typography>
@@ -546,151 +601,162 @@ const UserPage = () => {
               </AccordionDetails>
             </Accordion>
           )}
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="subtitle1">
-                Restrições avançadas / Compatibilidade Traccar
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails className={classes.details}>
-              <Alert severity="warning">
-                Estas opções são bloqueios de segurança superiores ao perfil. Um Perfil de Acesso
-                nunca ignora estas restrições nem amplia o escopo de veículos.
-              </Alert>
-              <TextField
-                label={t('userExpirationTime')}
-                type="date"
-                value={item.expirationTime ? item.expirationTime.split('T')[0] : '2099-01-01'}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    setItem({ ...item, expirationTime: new Date(e.target.value).toISOString() });
-                  }
-                }}
-                disabled={!manager}
-              />
-              <TextField
-                type="number"
-                value={item.deviceLimit || 0}
-                onChange={(e) => setItem({ ...item, deviceLimit: Number(e.target.value) })}
-                label={t('userDeviceLimit')}
-                disabled={!admin}
-              />
-              <TextField
-                type="number"
-                value={item.userLimit || 0}
-                onChange={(e) => setItem({ ...item, userLimit: Number(e.target.value) })}
-                label={t('userUserLimit')}
-                disabled={!admin}
-              />
-              <Button variant="outlined" color="primary" onClick={() => setRevokeDialogOpen(true)}>
-                {t('userRevokeToken')}
-              </Button>
-              <FormGroup>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={item.disabled}
-                      onChange={(e) => setItem({ ...item, disabled: e.target.checked })}
-                    />
-                  }
-                  label={t('sharedDisabled')}
-                  disabled={!manager}
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={item.administrator}
-                      onChange={(e) => setItem({ ...item, administrator: e.target.checked })}
-                    />
-                  }
-                  label={t('userAdmin')}
-                  disabled={!admin}
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={item.readonly}
-                      onChange={(e) => setItem({ ...item, readonly: e.target.checked })}
-                    />
-                  }
-                  label={t('serverReadonly')}
-                  disabled={!manager}
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={item.deviceReadonly}
-                      onChange={(e) => setItem({ ...item, deviceReadonly: e.target.checked })}
-                    />
-                  }
-                  label={t('userDeviceReadonly')}
-                  disabled={!manager}
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={item.limitCommands}
-                      onChange={(e) => setItem({ ...item, limitCommands: e.target.checked })}
-                    />
-                  }
-                  label={t('userLimitCommands')}
-                  disabled={!manager}
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={item.disableReports}
-                      onChange={(e) => setItem({ ...item, disableReports: e.target.checked })}
-                    />
-                  }
-                  label={t('userDisableReports')}
-                  disabled={!manager}
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={item.fixedEmail}
-                      onChange={(e) => setItem({ ...item, fixedEmail: e.target.checked })}
-                    />
-                  }
-                  label={t('userFixedEmail')}
-                  disabled={!manager}
-                />
-              </FormGroup>
-            </AccordionDetails>
-          </Accordion>
-          <EditAttributesAccordion
-            attribute={attribute}
-            attributes={item.attributes}
-            setAttributes={(attributes) => setItem({ ...item, attributes })}
-            definitions={{ ...commonUserAttributes, ...userAttributes }}
-            focusAttribute={attribute}
-          />
-          {registrationEnabled && item.id === currentUser.id && !manager && (
+          {canEditNativeRestrictions && (
             <Accordion>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="subtitle1" color="error">
-                  {t('userDeleteAccount')}
+                <Typography variant="subtitle1">
+                  Restrições avançadas / Compatibilidade Traccar
                 </Typography>
               </AccordionSummary>
               <AccordionDetails className={classes.details}>
+                <Alert severity="warning">
+                  Estas opções são bloqueios de segurança superiores ao perfil. Um Perfil de Acesso
+                  nunca ignora estas restrições nem amplia o escopo de veículos.
+                </Alert>
                 <TextField
-                  value={deleteEmail}
-                  onChange={(e) => setDeleteEmail(e.target.value)}
-                  label={t('userEmail')}
-                  error={deleteFailed}
+                  label={t('userExpirationTime')}
+                  type="date"
+                  value={item.expirationTime ? item.expirationTime.split('T')[0] : '2099-01-01'}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setItem({ ...item, expirationTime: new Date(e.target.value).toISOString() });
+                    }
+                  }}
+                  disabled={!canEditNativeRestrictions}
+                />
+                <TextField
+                  type="number"
+                  value={item.deviceLimit || 0}
+                  onChange={(e) => setItem({ ...item, deviceLimit: Number(e.target.value) })}
+                  label={t('userDeviceLimit')}
+                  disabled={!admin || !canEditNativeRestrictions}
+                />
+                <TextField
+                  type="number"
+                  value={item.userLimit || 0}
+                  onChange={(e) => setItem({ ...item, userLimit: Number(e.target.value) })}
+                  label={t('userUserLimit')}
+                  disabled={!admin || !canEditNativeRestrictions}
                 />
                 <Button
                   variant="outlined"
-                  color="error"
-                  onClick={handleDelete}
-                  startIcon={<DeleteForeverIcon />}
+                  color="primary"
+                  onClick={() => setRevokeDialogOpen(true)}
                 >
-                  {t('userDeleteAccount')}
+                  {t('userRevokeToken')}
                 </Button>
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={item.disabled}
+                        onChange={(e) => setItem({ ...item, disabled: e.target.checked })}
+                      />
+                    }
+                    label={t('sharedDisabled')}
+                    disabled={!canEditNativeRestrictions}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={item.administrator}
+                        onChange={(e) => setItem({ ...item, administrator: e.target.checked })}
+                      />
+                    }
+                    label={t('userAdmin')}
+                    disabled={!admin || !canEditNativeRestrictions}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={item.readonly}
+                        onChange={(e) => setItem({ ...item, readonly: e.target.checked })}
+                      />
+                    }
+                    label={t('serverReadonly')}
+                    disabled={!canEditNativeRestrictions}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={item.deviceReadonly}
+                        onChange={(e) => setItem({ ...item, deviceReadonly: e.target.checked })}
+                      />
+                    }
+                    label={t('userDeviceReadonly')}
+                    disabled={!canEditNativeRestrictions}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={item.limitCommands}
+                        onChange={(e) => setItem({ ...item, limitCommands: e.target.checked })}
+                      />
+                    }
+                    label={t('userLimitCommands')}
+                    disabled={!canEditNativeRestrictions}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={item.disableReports}
+                        onChange={(e) => setItem({ ...item, disableReports: e.target.checked })}
+                      />
+                    }
+                    label={t('userDisableReports')}
+                    disabled={!canEditNativeRestrictions}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={item.fixedEmail}
+                        onChange={(e) => setItem({ ...item, fixedEmail: e.target.checked })}
+                      />
+                    }
+                    label={t('userFixedEmail')}
+                    disabled={!canEditNativeRestrictions}
+                  />
+                </FormGroup>
               </AccordionDetails>
             </Accordion>
           )}
+          {canEditAttributes && (
+            <EditAttributesAccordion
+              attribute={attribute}
+              attributes={item.attributes}
+              setAttributes={(attributes) => setItem({ ...item, attributes })}
+              definitions={{ ...commonUserAttributes, ...userAttributes }}
+              focusAttribute={attribute}
+            />
+          )}
+          {registrationEnabled &&
+            item.id === currentUser.id &&
+            !manager &&
+            access.can('user.delete') && (
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle1" color="error">
+                    {t('userDeleteAccount')}
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails className={classes.details}>
+                  <TextField
+                    value={deleteEmail}
+                    onChange={(e) => setDeleteEmail(e.target.value)}
+                    label={t('userEmail')}
+                    error={deleteFailed}
+                  />
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={handleDelete}
+                    startIcon={<DeleteForeverIcon />}
+                  >
+                    {t('userDeleteAccount')}
+                  </Button>
+                </AccordionDetails>
+              </Accordion>
+            )}
         </>
       )}
       <Dialog open={effectiveOpen} onClose={() => setEffectiveOpen(false)} fullWidth maxWidth="sm">

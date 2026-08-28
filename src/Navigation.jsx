@@ -490,7 +490,7 @@ const Navigation = () => {
             <Route
               path="user/:id"
               element={
-                <RequireAccess permission={['user.edit', 'preference.view']}>
+                <RequireAccess permission={['user.edit', 'account.view']}>
                   <UserPage />
                 </RequireAccess>
               }

@@ -26,6 +26,7 @@ test('catálogo RBAC contém somente chaves únicas', () => {
       'maintenance',
       'notifications',
       'users',
+      'account',
       'access-profiles',
       'attributes',
       'announcement',
@@ -33,7 +34,7 @@ test('catálogo RBAC contém somente chaves únicas', () => {
       'preferences',
     ],
   );
-  assert.equal(permissions.length, 72);
+  assert.equal(permissions.length, 83);
 });
 test('negação individual prevalece sobre perfil e permissão adicional', () => {
   const access = {

@@ -40,6 +40,7 @@ const BottomMenu = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const hasSettings = [
     'preference.view',
+    'account.view',
     'notification.view',
     'device.view',
     'geofence.view',
@@ -168,7 +169,7 @@ const BottomMenu = () => {
             value="settings"
           />
         )}
-        {readonly ? (
+        {readonly || !access.can('account.view') ? (
           <BottomNavigationAction
             label={t('loginLogout')}
             icon={<ExitToAppIcon />}
