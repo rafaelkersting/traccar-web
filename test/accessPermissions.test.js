@@ -56,6 +56,44 @@ test('origem efetiva diferencia perfil e exceção permitida', () => {
   );
 });
 
+test('origem efetiva identifica permissão derivada por compatibilidade', () => {
+  assert.equal(
+    permissionSource(
+      {
+        permissions: ['account.basic.edit'],
+        compatibilityPermissions: ['account.basic.edit'],
+      },
+      'account.basic.edit',
+    ),
+    'compatibility',
+  );
+});
+
+test('precedência da origem mantém deny, allow, perfil, compatibilidade e ausência', () => {
+  const permission = 'account.basic.edit';
+  const access = {
+    permissions: [permission],
+    profilePermissions: [permission],
+    compatibilityPermissions: [permission],
+    allowedOverrides: [permission],
+    denied: [permission],
+  };
+  assert.equal(permissionSource(access, permission), 'deny');
+  assert.equal(permissionSource({ ...access, denied: [] }, permission), 'allow');
+  assert.equal(
+    permissionSource({ ...access, denied: [], allowedOverrides: [] }, permission),
+    'profile',
+  );
+  assert.equal(
+    permissionSource(
+      { ...access, denied: [], allowedOverrides: [], profilePermissions: [] },
+      permission,
+    ),
+    'compatibility',
+  );
+  assert.equal(permissionSource({}, permission), 'none');
+});
+
 test('todas as permissões migradas ficam negadas em OFF e permitidas em ON', () => {
   const permissions = ACCESS_MODULES.flatMap((module) =>
     module.permissions.map(([permission]) => permission),

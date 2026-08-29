@@ -286,6 +286,8 @@ const UserPage = () => {
         return { label: 'Permitido por exceção', color: 'info' };
       case 'profile':
         return { label: 'Permitido pelo perfil', color: 'success' };
+      case 'compatibility':
+        return { label: 'Permitido por Preferências (compatibilidade)', color: 'warning' };
       default:
         return { label: 'Não permitido', color: 'default' };
     }
