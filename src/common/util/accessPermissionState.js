@@ -3,6 +3,7 @@ export const createEmptyAccessState = () => ({
   legacy: false,
   permissions: [],
   profilePermissions: [],
+  compatibilityPermissions: [],
   allowedOverrides: [],
   denied: [],
   error: null,

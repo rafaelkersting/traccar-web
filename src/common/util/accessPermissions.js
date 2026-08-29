@@ -205,6 +205,9 @@ export const permissionSource = (access, permission) => {
   if (access?.profilePermissions?.includes(permission)) {
     return 'profile';
   }
+  if (access?.compatibilityPermissions?.includes(permission)) {
+    return 'compatibility';
+  }
   return 'none';
 };
 
