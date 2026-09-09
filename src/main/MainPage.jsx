@@ -14,6 +14,7 @@ import EventsDrawer from './EventsDrawer';
 import useFilter from './useFilter';
 import MainToolbar from './MainToolbar';
 import { useAttributePreference } from '../common/util/preferences';
+import DemoPanel from '../demo/DemoPanel';
 
 const MainMap = lazy(() => import('./MainMap'));
 
@@ -206,6 +207,7 @@ const MainPage = () => {
           desktopPadding={theme.dimensions.drawerWidthDesktop}
         />
       )}
+      <DemoPanel />
     </div>
   );
 };
