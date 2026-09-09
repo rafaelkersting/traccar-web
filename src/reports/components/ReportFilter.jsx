@@ -17,6 +17,7 @@ import SplitButton from '../../common/components/SplitButton';
 import SelectField from '../../common/components/SelectField';
 import { useRestriction } from '../../common/util/permissions';
 import { deviceEquality } from '../../common/util/deviceEquality';
+import useAccessPermissions from '../../common/util/useAccessPermissions';
 
 export const updateReportParams = (searchParams, setSearchParams, key, values) => {
   const newParams = new URLSearchParams(searchParams);
@@ -30,6 +31,9 @@ export const updateReportParams = (searchParams, setSearchParams, key, values) =
 const ReportFilter = ({ children, onShow, onExport, onSchedule, deviceType, loading, formats }) => {
   const { classes } = useReportStyles();
   const t = useTranslation();
+  const access = useAccessPermissions();
+  const canGenerate = access.can('report.generate');
+  const canExport = access.can('report.export');
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -78,20 +82,20 @@ const ReportFilter = ({ children, onShow, onExport, onSchedule, deviceType, load
     }
     return loading;
   };
-  const disabled = evaluateDisabled();
+  const disabled = !canGenerate || evaluateDisabled();
   const loaded = from && to && !loading;
 
   const evaluateOptions = () => {
     const result = {
       json: t('reportShow'),
     };
-    if (onExport && loaded) {
+    if (onExport && loaded && canExport) {
       formats.forEach((format) => {
         result[format] = `${t('reportExport')} (${format.toUpperCase()})`;
       });
       result.print = t('reportPrint');
     }
-    if (onSchedule && !readonly) {
+    if (onSchedule && !readonly && canGenerate) {
       result.schedule = t('reportSchedule');
     }
     return result;
@@ -99,10 +103,10 @@ const ReportFilter = ({ children, onShow, onExport, onSchedule, deviceType, load
   const options = evaluateOptions();
 
   useEffect(() => {
-    if (from && to) {
+    if (from && to && canGenerate) {
       onShow({ deviceIds: deviceIds.filter((it) => it !== 'all'), groupIds, from, to });
     }
-  }, [deviceIds, groupIds, from, to, onShow]);
+  }, [canGenerate, deviceIds, groupIds, from, to, onShow]);
 
   const showReport = () => {
     let selectedFrom;
@@ -151,13 +155,15 @@ const ReportFilter = ({ children, onShow, onExport, onSchedule, deviceType, load
       case 'gpx':
       case 'kml':
       case 'kmz':
-        onExport({
-          deviceIds: deviceIds.filter((it) => it !== 'all'),
-          groupIds,
-          from,
-          to,
-          format: type,
-        });
+        if (canExport) {
+          onExport({
+            deviceIds: deviceIds.filter((it) => it !== 'all'),
+            groupIds,
+            from,
+            to,
+            format: type,
+          });
+        }
         break;
       case 'print':
         window.print();

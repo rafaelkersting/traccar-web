@@ -18,11 +18,13 @@ import useSettingsStyles from './common/useSettingsStyles';
 import SelectField from '../common/components/SelectField';
 import { prefixString } from '../common/util/stringUtils';
 import fetchOrThrow from '../common/util/fetchOrThrow';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const AnnouncementPage = () => {
   const navigate = useNavigate();
   const { classes } = useSettingsStyles();
   const t = useTranslation();
+  const access = useAccessPermissions();
 
   const [users, setUsers] = useState([]);
   const [notificator, setNotificator] = useState();
@@ -31,6 +33,7 @@ const AnnouncementPage = () => {
   const handleSend = useCatchCallback(async () => {
     const query = new URLSearchParams();
     users.forEach((userId) => query.append('userId', userId));
+    query.set('announcement', 'true');
     await fetchOrThrow(`/api/notifications/send/${notificator}?${query.toString()}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -83,7 +86,12 @@ const AnnouncementPage = () => {
             color="primary"
             variant="contained"
             onClick={handleSend}
-            disabled={!notificator || !message.subject || !message.body}
+            disabled={
+              !access.can('announcement.manage') ||
+              !notificator ||
+              !message.subject ||
+              !message.body
+            }
           >
             {t('commandSend')}
           </Button>

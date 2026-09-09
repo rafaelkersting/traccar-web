@@ -33,12 +33,15 @@ import useMapStyles from '../map/core/useMapStyles';
 import { map } from '../map/core/MapView';
 import useSettingsStyles from './common/useSettingsStyles';
 import fetchOrThrow from '../common/util/fetchOrThrow';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const ServerPage = () => {
   const { classes } = useSettingsStyles();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const t = useTranslation();
+  const access = useAccessPermissions();
+  const canManage = access.can('server.manage');
 
   const mapStyles = useMapStyles();
   const commonUserAttributes = useCommonUserAttributes(t);
@@ -70,8 +73,14 @@ const ServerPage = () => {
   return (
     <PageLayout menu={<SettingsMenu />} breadcrumbs={['settingsTitle', 'settingsServer']}>
       <Container maxWidth="xs" className={classes.container}>
+        {!canManage && (
+          <Typography color="textSecondary" sx={{ mb: 2 }}>
+            Visualização permitida. A administração do servidor está bloqueada pelo Perfil de
+            Acesso.
+          </Typography>
+        )}
         {item && (
-          <>
+          <fieldset disabled={!canManage} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
             <Accordion defaultExpanded>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="subtitle1">{t('sharedPreferences')}</Typography>
@@ -352,13 +361,19 @@ const ServerPage = () => {
                 ...serverAttributes,
               }}
             />
-          </>
+          </fieldset>
         )}
         <div className={classes.buttons}>
           <Button type="button" color="primary" variant="outlined" onClick={() => navigate(-1)}>
             {t('sharedCancel')}
           </Button>
-          <Button type="button" color="primary" variant="contained" onClick={handleSave}>
+          <Button
+            type="button"
+            color="primary"
+            variant="contained"
+            onClick={handleSave}
+            disabled={!canManage}
+          >
             {t('sharedSave')}
           </Button>
         </div>

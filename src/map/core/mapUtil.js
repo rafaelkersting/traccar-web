@@ -82,7 +82,7 @@ export const prepareIcon = (background, icon, color) => {
   return context.getImageData(0, 0, canvas.width, canvas.height);
 };
 
-export const prepareDeviceMarkerImage = (image, selected = false) => {
+export const prepareDeviceMarkerImage = (image, selected = false, framed = true) => {
   const pixelRatio = window.devicePixelRatio;
   const size = selected ? mapMarkerVisualSizes.selected : mapMarkerVisualSizes.regular;
   const contentSize = selected
@@ -100,32 +100,34 @@ export const prepareDeviceMarkerImage = (image, selected = false) => {
     contentSize * pixelRatio,
   );
 
-  context.save();
-  context.shadowColor = 'rgba(0, 0, 0, 0.45)';
-  context.shadowBlur = 3 * pixelRatio;
-  context.fillStyle = selected ? 'rgba(255, 255, 255, 0.96)' : 'rgba(255, 255, 255, 0.88)';
-  context.beginPath();
-  context.arc(
-    canvas.width / 2,
-    canvas.height / 2,
-    canvas.width / 2 - 3 * pixelRatio,
-    0,
-    2 * Math.PI,
-  );
-  context.fill();
-  context.restore();
+  if (framed) {
+    context.save();
+    context.shadowColor = 'rgba(0, 0, 0, 0.45)';
+    context.shadowBlur = 3 * pixelRatio;
+    context.fillStyle = selected ? 'rgba(255, 255, 255, 0.96)' : 'rgba(255, 255, 255, 0.88)';
+    context.beginPath();
+    context.arc(
+      canvas.width / 2,
+      canvas.height / 2,
+      canvas.width / 2 - 3 * pixelRatio,
+      0,
+      2 * Math.PI,
+    );
+    context.fill();
+    context.restore();
 
-  context.strokeStyle = selected ? '#1976d2' : 'rgba(70, 70, 70, 0.55)';
-  context.lineWidth = (selected ? 2.5 : 1) * pixelRatio;
-  context.beginPath();
-  context.arc(
-    canvas.width / 2,
-    canvas.height / 2,
-    canvas.width / 2 - 3 * pixelRatio,
-    0,
-    2 * Math.PI,
-  );
-  context.stroke();
+    context.strokeStyle = selected ? '#1976d2' : 'rgba(70, 70, 70, 0.55)';
+    context.lineWidth = (selected ? 2.5 : 1) * pixelRatio;
+    context.beginPath();
+    context.arc(
+      canvas.width / 2,
+      canvas.height / 2,
+      canvas.width / 2 - 3 * pixelRatio,
+      0,
+      2 * Math.PI,
+    );
+    context.stroke();
+  }
 
   context.drawImage(
     image,

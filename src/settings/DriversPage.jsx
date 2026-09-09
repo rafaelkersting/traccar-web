@@ -10,10 +10,12 @@ import TableShimmer from '../common/components/TableShimmer';
 import SearchHeader from './components/SearchHeader';
 import useSettingsStyles from './common/useSettingsStyles';
 import fetchOrThrow from '../common/util/fetchOrThrow';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const DriversPage = () => {
   const { classes } = useSettingsStyles();
   const t = useTranslation();
+  const access = useAccessPermissions();
 
   const [reloadKey, reload] = useReducer((k) => k + 1, 0);
   const [items, setItems] = useState([]);
@@ -67,6 +69,8 @@ const DriversPage = () => {
                   editPath="/settings/driver"
                   endpoint="drivers"
                   onReload={reload}
+                  canEdit={access.can('driver.edit')}
+                  canDelete={access.can('driver.delete')}
                 />
               </TableCell>
             </TableRow>
@@ -76,7 +80,7 @@ const DriversPage = () => {
           )}
         </TableBody>
       </Table>
-      <CollectionFab editPath="/settings/driver" />
+      <CollectionFab editPath="/settings/driver" disabled={!access.can('driver.create')} />
     </PageLayout>
   );
 };

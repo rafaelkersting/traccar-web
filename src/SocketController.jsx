@@ -31,6 +31,7 @@ const SocketController = () => {
   const navigate = useNavigate();
 
   const authenticated = useSelector((state) => Boolean(state.session.user));
+  const user = useSelector((state) => state.session.user);
   const includeLogs = useSelector((state) => state.session.includeLogs);
 
   const socketRef = useRef();
@@ -71,8 +72,23 @@ const SocketController = () => {
           show: true,
         })),
       );
+      if (
+        user?.attributes?.demo &&
+        window.localStorage.getItem('demoBrowserNotifications') === 'true' &&
+        'Notification' in window &&
+        window.Notification.permission === 'granted'
+      ) {
+        events.forEach((event) => {
+          if (event.attributes.message) {
+            new window.Notification('Kersting GPS — Demonstração', {
+              body: event.attributes.message,
+              tag: `demo-event-${event.id}`,
+            });
+          }
+        });
+      }
     },
-    [features, dispatch, soundEvents, soundAlarms],
+    [features, dispatch, soundEvents, soundAlarms, user],
   );
 
   const handleEventsRef = useRef(handleEvents);

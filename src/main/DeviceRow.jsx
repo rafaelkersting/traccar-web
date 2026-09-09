@@ -1,39 +1,21 @@
+import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { makeStyles } from 'tss-react/mui';
-import {
-  IconButton,
-  Tooltip,
-  Avatar,
-  ListItemAvatar,
-  ListItemText,
-  ListItemButton,
-  Typography,
-} from '@mui/material';
-import BatteryFullIcon from '@mui/icons-material/BatteryFull';
-import BatteryChargingFullIcon from '@mui/icons-material/BatteryChargingFull';
-import Battery60Icon from '@mui/icons-material/Battery60';
-import BatteryCharging60Icon from '@mui/icons-material/BatteryCharging60';
-import Battery20Icon from '@mui/icons-material/Battery20';
-import BatteryCharging20Icon from '@mui/icons-material/BatteryCharging20';
-import ErrorIcon from '@mui/icons-material/Error';
+import { Avatar, ListItemAvatar, ListItemText, ListItemButton, Typography } from '@mui/material';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { devicesActions } from '../store';
-import {
-  formatAlarm,
-  formatBoolean,
-  formatPercentage,
-  formatStatus,
-  getStatusColor,
-} from '../common/util/formatter';
+import { formatStatus, getStatusColor } from '../common/util/formatter';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import { mapIconKey, mapIcons } from '../map/core/preloadImages';
 import { useAdministrator } from '../common/util/permissions';
-import EngineIcon from '../resources/images/data/engine.svg?react';
 import { useAttributePreference } from '../common/util/preferences';
 import GeofencesValue from '../common/components/GeofencesValue';
 import DriverValue from '../common/components/DriverValue';
 import MotionBar from './components/MotionBar';
+import { getDeviceImageUrl } from '../common/util/deviceImage';
+import VehicleStatusActions from '../common/components/VehicleStatusActions';
+import DeviceImage from '../common/components/DeviceImage';
 
 dayjs.extend(relativeTime);
 
@@ -43,11 +25,32 @@ const useStyles = makeStyles()((theme) => ({
     height: '25px',
     filter: 'brightness(0) invert(1)',
   },
-  batteryText: {
-    fontSize: '0.75rem',
-    fontWeight: 'normal',
-    lineHeight: '0.875rem',
+  thumbnail: {
+    display: 'block',
+    width: 36,
+    height: 36,
+    objectFit: 'contain',
+    objectPosition: 'center',
   },
+  text: {
+    minWidth: 0,
+  },
+  actions: {
+    display: 'flex',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  row: { display: 'flex', flexDirection: 'column', width: '100%' },
+  item: {
+    boxSizing: 'border-box',
+    height: 'calc(100% - 6px)',
+    margin: '3px 8px',
+    borderBottom: `1px solid ${theme.palette.divider}`,
+    borderRadius: theme.shape.borderRadius,
+    overflow: 'hidden',
+  },
+  header: { display: 'flex', alignItems: 'center', minWidth: 0 },
+  statusBar: { display: 'flex', alignItems: 'center', minHeight: 32, marginTop: 2 },
   success: {
     color: theme.palette.success.main,
   },
@@ -72,6 +75,7 @@ const DeviceRow = ({ devices, index, style }) => {
 
   const admin = useAdministrator();
   const selectedDeviceId = useSelector((state) => state.devices.selectedId);
+  const [hovered, setHovered] = useState(false);
 
   const item = devices[index];
   const position = useSelector((state) => state.session.positions[item.id]);
@@ -96,6 +100,8 @@ const DeviceRow = ({ devices, index, style }) => {
 
   const primaryValue = resolveFieldValue(devicePrimary);
   const secondaryValue = resolveFieldValue(deviceSecondary);
+  const deviceImageUrl = getDeviceImageUrl(item);
+  const expanded = selectedDeviceId === item.id || hovered;
 
   const secondaryText = () => {
     let status;
@@ -124,74 +130,48 @@ const DeviceRow = ({ devices, index, style }) => {
         onClick={() => dispatch(devicesActions.selectId(item.id))}
         disabled={!admin && item.disabled}
         selected={selectedDeviceId === item.id}
-        className={selectedDeviceId === item.id ? classes.selected : null}
+        className={`${classes.item} ${selectedDeviceId === item.id ? classes.selected : ''}`}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
-        <ListItemAvatar>
-          <Avatar>
-            <img className={classes.icon} src={mapIcons[mapIconKey(item.category)]} alt="" />
-          </Avatar>
-        </ListItemAvatar>
-        <ListItemText
-          primary={primaryValue}
-          secondary={secondaryText()}
-          slots={{
-            primary: Typography,
-            secondary: Typography,
-          }}
-          slotProps={{
-            primary: { noWrap: true },
-            secondary: { noWrap: true },
-          }}
-        />
-        {position && (
-          <>
-            {position.attributes.hasOwnProperty('alarm') && (
-              <Tooltip title={`${t('eventAlarm')}: ${formatAlarm(position.attributes.alarm, t)}`}>
-                <IconButton size="small">
-                  <ErrorIcon fontSize="small" className={classes.error} />
-                </IconButton>
-              </Tooltip>
-            )}
-            {position.attributes.hasOwnProperty('ignition') && (
-              <Tooltip
-                title={`${t('positionIgnition')}: ${formatBoolean(position.attributes.ignition, t)}`}
-              >
-                <IconButton size="small">
-                  {position.attributes.ignition ? (
-                    <EngineIcon width={20} height={20} className={classes.success} />
-                  ) : (
-                    <EngineIcon width={20} height={20} className={classes.neutral} />
-                  )}
-                </IconButton>
-              </Tooltip>
-            )}
-            {position.attributes.hasOwnProperty('batteryLevel') && (
-              <Tooltip
-                title={`${t('positionBatteryLevel')}: ${formatPercentage(position.attributes.batteryLevel)}`}
-              >
-                <IconButton size="small">
-                  {(position.attributes.batteryLevel > 70 &&
-                    (position.attributes.charge ? (
-                      <BatteryChargingFullIcon fontSize="small" className={classes.success} />
-                    ) : (
-                      <BatteryFullIcon fontSize="small" className={classes.success} />
-                    ))) ||
-                    (position.attributes.batteryLevel > 30 &&
-                      (position.attributes.charge ? (
-                        <BatteryCharging60Icon fontSize="small" className={classes.warning} />
-                      ) : (
-                        <Battery60Icon fontSize="small" className={classes.warning} />
-                      ))) ||
-                    (position.attributes.charge ? (
-                      <BatteryCharging20Icon fontSize="small" className={classes.error} />
-                    ) : (
-                      <Battery20Icon fontSize="small" className={classes.error} />
-                    ))}
-                </IconButton>
-              </Tooltip>
-            )}
-          </>
-        )}
+        <div className={classes.row}>
+          <div className={classes.header}>
+            <ListItemAvatar>
+              <Avatar>
+                {deviceImageUrl ? (
+                  <DeviceImage
+                    className={classes.thumbnail}
+                    src={deviceImageUrl}
+                    alt={`Imagem de ${item.name}`}
+                  />
+                ) : (
+                  <img className={classes.icon} src={mapIcons[mapIconKey(item.category)]} alt="" />
+                )}
+              </Avatar>
+            </ListItemAvatar>
+            <ListItemText
+              className={classes.text}
+              primary={primaryValue}
+              secondary={secondaryText()}
+              slots={{
+                primary: Typography,
+                secondary: Typography,
+              }}
+              slotProps={{
+                primary: { noWrap: true },
+                secondary: { noWrap: true },
+              }}
+            />
+          </div>
+          <div className={classes.statusBar}>
+            <VehicleStatusActions
+              device={item}
+              position={position}
+              variant="list"
+              expanded={expanded}
+            />
+          </div>
+        </div>
       </ListItemButton>
     </div>
   );

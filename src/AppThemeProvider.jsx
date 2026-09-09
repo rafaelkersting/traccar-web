@@ -42,7 +42,6 @@ const AppThemeProvider = ({ children }) => {
 
   const persistedThemeId = resolvePersistedSystemThemeId(
     user?.attributes,
-    server?.attributes,
     localThemeId || DEFAULT_SYSTEM_THEME,
   );
   const activeThemeId = previewThemeId || persistedThemeId;

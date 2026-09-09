@@ -4,6 +4,23 @@ import svgr from 'vite-plugin-svgr';
 import { VitePWA } from 'vite-plugin-pwa';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import branding from './branding.js';
+import {
+  DEFAULT_SYSTEM_THEME,
+  SYSTEM_THEME_STORAGE_KEY,
+  SYSTEM_THEMES,
+} from './src/common/theme/systemThemes.js';
+
+const systemThemeBootstrap = Object.freeze({
+  defaultTheme: DEFAULT_SYSTEM_THEME,
+  storageKey: SYSTEM_THEME_STORAGE_KEY,
+  themeIds: SYSTEM_THEMES.map((item) => item.id),
+});
+
+const systemThemeBootstrapPlugin = {
+  name: 'system-theme-bootstrap',
+  transformIndexHtml: (html) =>
+    html.replace('__SYSTEM_THEME_BOOTSTRAP__', JSON.stringify(systemThemeBootstrap)),
+};
 
 export default defineConfig(() => ({
   server: {
@@ -18,6 +35,7 @@ export default defineConfig(() => ({
     chunkSizeWarningLimit: 1100,
   },
   plugins: [
+    systemThemeBootstrapPlugin,
     svgr(),
     react(),
     VitePWA({

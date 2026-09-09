@@ -12,10 +12,12 @@ import TableShimmer from '../common/components/TableShimmer';
 import SearchHeader from './components/SearchHeader';
 import useSettingsStyles from './common/useSettingsStyles';
 import fetchOrThrow from '../common/util/fetchOrThrow';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const NotificationsPage = () => {
   const { classes } = useSettingsStyles();
   const t = useTranslation();
+  const access = useAccessPermissions();
 
   const [reloadKey, reload] = useReducer((k) => k + 1, 0);
   const [items, setItems] = useState([]);
@@ -86,6 +88,8 @@ const NotificationsPage = () => {
                   editPath="/settings/notification"
                   endpoint="notifications"
                   onReload={reload}
+                  canEdit={access.can('notification.edit')}
+                  canDelete={access.can('notification.delete')}
                 />
               </TableCell>
             </TableRow>
@@ -95,7 +99,10 @@ const NotificationsPage = () => {
           )}
         </TableBody>
       </Table>
-      <CollectionFab editPath="/settings/notification" />
+      <CollectionFab
+        editPath="/settings/notification"
+        disabled={!access.can('notification.create')}
+      />
     </PageLayout>
   );
 };

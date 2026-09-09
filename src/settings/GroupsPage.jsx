@@ -16,6 +16,7 @@ import SearchHeader from './components/SearchHeader';
 import { useRestriction } from '../common/util/permissions';
 import useSettingsStyles from './common/useSettingsStyles';
 import fetchOrThrow from '../common/util/fetchOrThrow';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const GroupsPage = () => {
   const { classes } = useSettingsStyles();
@@ -25,6 +26,7 @@ const GroupsPage = () => {
   const limitCommands = useRestriction('limitCommands');
   const shareDisabled = useSelector((state) => state.session.server.attributes.disableShare);
   const user = useSelector((state) => state.session.user);
+  const access = useAccessPermissions();
 
   const [reloadKey, reload] = useReducer((k) => k + 1, 0);
   const [items, setItems] = useState([]);
@@ -98,10 +100,14 @@ const GroupsPage = () => {
                   endpoint="groups"
                   onReload={reload}
                   customActions={[
-                    actionConnections,
-                    ...(!limitCommands ? [actionCommand] : []),
-                    ...(!shareDisabled && !user.temporary ? [actionShare] : []),
+                    ...(access.can('user.link-scope') ? [actionConnections] : []),
+                    ...(!limitCommands && access.can('command.send') ? [actionCommand] : []),
+                    ...(!shareDisabled && !user.temporary && access.can('group.edit')
+                      ? [actionShare]
+                      : []),
                   ]}
+                  canEdit={access.can('group.edit')}
+                  canDelete={access.can('group.delete')}
                 />
               </TableCell>
             </TableRow>
@@ -111,7 +117,7 @@ const GroupsPage = () => {
           )}
         </TableBody>
       </Table>
-      <CollectionFab editPath="/settings/group" />
+      <CollectionFab editPath="/settings/group" disabled={!access.can('group.create')} />
     </PageLayout>
   );
 };

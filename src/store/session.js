@@ -1,4 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
+import { shouldAcceptLivePosition } from '../common/util/livePosition';
 
 const { reducer, actions } = createSlice({
   name: 'session',
@@ -38,6 +39,9 @@ const { reducer, actions } = createSlice({
         state.server.attributes['web.liveRouteLength'] ||
         10;
       action.payload.forEach((position) => {
+        if (!shouldAcceptLivePosition(state.positions[position.deviceId], position)) {
+          return;
+        }
         state.positions[position.deviceId] = position;
         if (liveRoutes !== 'none') {
           const route = state.history[position.deviceId] || [];

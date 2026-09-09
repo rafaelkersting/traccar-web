@@ -19,6 +19,7 @@ import MapScale from '../map/MapScale';
 import MapRuler from '../map/control/MapRuler';
 import MapNotification from '../map/control/MapNotification';
 import useFeatures from '../common/util/useFeatures';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const MainMap = ({ filteredPositions, selectedPosition, onEventsClick }) => {
   const theme = useTheme();
@@ -29,6 +30,7 @@ const MainMap = ({ filteredPositions, selectedPosition, onEventsClick }) => {
   const eventsAvailable = useSelector((state) => !!state.events.items.length);
 
   const features = useFeatures();
+  const access = useAccessPermissions();
 
   const [rulerActive, setRulerActive] = useState(false);
 
@@ -51,10 +53,11 @@ const MainMap = ({ filteredPositions, selectedPosition, onEventsClick }) => {
           onMarkerClick={onMarkerClick}
           selectedPosition={selectedPosition}
           showStatus
+          animate
           disabled={rulerActive}
         />
         <MapDefaultCamera filteredPositions={filteredPositions} />
-        <MapSelectedDevice />
+        {access.can('map.follow') && <MapSelectedDevice />}
         <PoiMap />
         <MapRuler positions={filteredPositions} onActiveChange={setRulerActive} />
         {!features.disableEvents && (

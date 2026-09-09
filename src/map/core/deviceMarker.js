@@ -5,6 +5,17 @@ export const mapMarkerVisualSizes = {
   selectedContent: 42,
 };
 
+// Custom markers keep their original colour and contrast even when the device is
+// offline. The surrounding state ring still communicates the offline condition.
+export const deviceMarkerOpacityExpression = [
+  'case',
+  ['get', 'customMarker'],
+  1,
+  ['==', ['get', 'markerState'], 'offline'],
+  0.55,
+  1,
+];
+
 export const resolveDeviceMarkerImage = (
   deviceId,
   fallbackImage,

@@ -14,10 +14,12 @@ import TableShimmer from '../common/components/TableShimmer';
 import SearchHeader from './components/SearchHeader';
 import useSettingsStyles from './common/useSettingsStyles';
 import fetchOrThrow from '../common/util/fetchOrThrow';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const MaintenacesPage = () => {
   const { classes } = useSettingsStyles();
   const t = useTranslation();
+  const access = useAccessPermissions();
 
   const positionAttributes = usePositionAttributes(t);
 
@@ -103,6 +105,8 @@ const MaintenacesPage = () => {
                   editPath="/settings/maintenance"
                   endpoint="maintenance"
                   onReload={reload}
+                  canEdit={access.can('maintenance.edit')}
+                  canDelete={access.can('maintenance.delete')}
                 />
               </TableCell>
             </TableRow>
@@ -112,7 +116,10 @@ const MaintenacesPage = () => {
           )}
         </TableBody>
       </Table>
-      <CollectionFab editPath="/settings/maintenance" />
+      <CollectionFab
+        editPath="/settings/maintenance"
+        disabled={!access.can('maintenance.create')}
+      />
     </PageLayout>
   );
 };

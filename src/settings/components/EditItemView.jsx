@@ -23,6 +23,8 @@ const EditItemView = ({
   defaultItem,
   validate,
   onItemSaved,
+  onSave,
+  canSave = true,
   menu,
   breadcrumbs,
 }) => {
@@ -47,6 +49,14 @@ const EditItemView = ({
   );
 
   const handleSave = useCatch(async () => {
+    if (onSave) {
+      const savedItem = await onSave(item);
+      if (onItemSaved) {
+        await onItemSaved(savedItem);
+      }
+      navigate(-1);
+      return;
+    }
     let url = `/api/${endpoint}`;
     if (id) {
       url += `/${id}`;
@@ -93,7 +103,7 @@ const EditItemView = ({
             color="primary"
             variant="contained"
             onClick={handleSave}
-            disabled={!item || !validate()}
+            disabled={!canSave || !item || !validate()}
           >
             {t('sharedSave')}
           </Button>

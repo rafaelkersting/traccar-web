@@ -38,6 +38,7 @@ import LogoImage from './LogoImage';
 import { useCatch } from '../reactHelper';
 import QrCodeDialog from '../common/components/QrCodeDialog';
 import PasswordField from '../common/components/PasswordField';
+import DemoStartDialog from '../demo/DemoStartDialog';
 
 const useStyles = makeStyles()((theme) => ({
   options: {
@@ -147,6 +148,8 @@ const LoginPage = () => {
   const [code, setCode] = useState('');
   const [showServerTooltip, setShowServerTooltip] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
+  const [demoEnabled, setDemoEnabled] = useState(false);
 
   const registrationEnabled = useSelector((state) => state.session.server.registration);
   const languageEnabled = useSelector((state) => {
@@ -210,6 +213,19 @@ const LoginPage = () => {
   };
 
   useEffect(() => nativePostMessage('authentication'), []);
+
+  useEffect(() => {
+    const abortController = new AbortController();
+    fetch('/api/demo/config', { signal: abortController.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((configuration) => setDemoEnabled(Boolean(configuration?.enabled)))
+      .catch((error) => {
+        if (error.name !== 'AbortError') {
+          setDemoEnabled(false);
+        }
+      });
+    return () => abortController.abort();
+  }, []);
 
   useEffect(() => {
     const listener = (token) => handleTokenLoginRef.current(token);
@@ -343,8 +359,13 @@ const LoginPage = () => {
               endIcon={theme.systemTheme.id === 'classic' ? null : <ArrowForwardIcon />}
               disabled={!email || !password || (codeEnabled && !code)}
             >
-              {t('loginLogin')}
+              Acessar plataforma
             </Button>
+            {demoEnabled && (
+              <Button variant="outlined" color="primary" onClick={() => setShowDemo(true)}>
+                Testar demonstração agora
+              </Button>
+            )}
           </>
         )}
         {openIdEnabled && (
@@ -378,6 +399,15 @@ const LoginPage = () => {
         )}
       </div>
       <QrCodeDialog open={showQr} onClose={() => setShowQr(false)} />
+      <DemoStartDialog
+        open={showDemo}
+        onClose={() => setShowDemo(false)}
+        onCreated={({ user }) => {
+          dispatch(sessionActions.updateUser(user));
+          setShowDemo(false);
+          navigate('/', { replace: true });
+        }}
+      />
       <Snackbar
         open={!!announcement && !announcementShown}
         message={announcement}

@@ -31,10 +31,12 @@ import { useAdministrator, useRestriction } from '../common/util/permissions';
 import useSettingsStyles from './common/useSettingsStyles';
 import fetchOrThrow from '../common/util/fetchOrThrow';
 import { isCriticalCommand, isSystemCommand } from './commandCatalog';
+import useAccessPermissions from '../common/util/useAccessPermissions';
 
 const CommandsPage = () => {
   const { classes } = useSettingsStyles();
   const t = useTranslation();
+  const access = useAccessPermissions();
 
   const [reloadKey, reload] = useReducer((k) => k + 1, 0);
   const [items, setItems] = useState([]);
@@ -208,6 +210,8 @@ const CommandsPage = () => {
                     editPath="/settings/command"
                     endpoint="commands"
                     onReload={reload}
+                    canEdit={access.can('command.edit')}
+                    canDelete={access.can('command.delete')}
                   />
                 </TableCell>
               )}
@@ -222,7 +226,10 @@ const CommandsPage = () => {
           )}
         </TableBody>
       </Table>
-      <CollectionFab editPath="/settings/command" disabled={limitCommands} />
+      <CollectionFab
+        editPath="/settings/command"
+        disabled={limitCommands || !access.can('command.create')}
+      />
       <Dialog open={confirmApply} onClose={() => setConfirmApply(false)}>
         <DialogTitle>Aplicar catálogo padrão?</DialogTitle>
         <DialogContent>

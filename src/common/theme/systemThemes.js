@@ -1,12 +1,12 @@
 export const SYSTEM_THEME_ATTRIBUTE = 'web.systemTheme';
 export const SYSTEM_THEME_STORAGE_KEY = 'kersting.systemTheme';
-export const DEFAULT_SYSTEM_THEME = 'classic';
+export const DEFAULT_SYSTEM_THEME = 'futuristicGradient';
 
 const systemThemes = [
   {
     id: 'classic',
     name: 'Tema Atual',
-    description: 'Visual clássico do Kersting GPS, preservado como tema padrão.',
+    description: 'Visual clássico do Kersting GPS, preservado como opção de aparência.',
     mode: 'system',
     colors: {
       primary: '#1a237e',
@@ -201,14 +201,12 @@ export const resolveSystemThemeId = (themeId) =>
 export const getSystemTheme = (themeId) =>
   SYSTEM_THEMES.find((item) => item.id === resolveSystemThemeId(themeId));
 
-export const resolvePersistedSystemThemeId = (userAttributes, serverAttributes, localThemeId) => {
-  const serverThemeId = serverAttributes?.[SYSTEM_THEME_ATTRIBUTE];
-  if (userAttributes) {
-    return resolveSystemThemeId(
-      userAttributes[SYSTEM_THEME_ATTRIBUTE] || serverThemeId || DEFAULT_SYSTEM_THEME,
-    );
+export const resolvePersistedSystemThemeId = (userAttributes, localThemeId) => {
+  const userThemeId = userAttributes?.[SYSTEM_THEME_ATTRIBUTE];
+  if (userThemeId !== undefined && userThemeId !== null && userThemeId !== '') {
+    return resolveSystemThemeId(userThemeId);
   }
-  return resolveSystemThemeId(serverThemeId || localThemeId || DEFAULT_SYSTEM_THEME);
+  return resolveSystemThemeId(localThemeId || DEFAULT_SYSTEM_THEME);
 };
 
 const browserStorage = () => (typeof window !== 'undefined' ? window.localStorage : null);
