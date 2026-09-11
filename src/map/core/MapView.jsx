@@ -4,6 +4,7 @@ import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import { googleProtocol } from 'maplibre-google-maps';
 import { Protocol } from 'pmtiles';
 import { useRef, useLayoutEffect, useEffect, useState, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import { useTheme } from '@mui/material';
 import MapSwitcher from '../control/MapSwitcher';
 import { useAttributePreference, usePreference } from '../../common/util/preferences';
@@ -12,6 +13,7 @@ import { mapImages } from './preloadImages';
 import useMapStyles from './useMapStyles';
 import { useAsyncTask } from '../../reactHelper';
 import './MapView.css';
+import { initialMapStyle, mapStyleStorageKey } from './mapStylePreference';
 
 const element = document.createElement('div');
 element.style.width = '100%';
@@ -63,13 +65,15 @@ const MapView = ({ children }) => {
   const [mapReady, setMapReady] = useState(false);
 
   const mapStyles = useMapStyles();
+  const user = useSelector((state) => state.session.user);
+  const mapPreference = usePreference('map', 'locationIqStreets');
   const activeMapStyles = useAttributePreference(
     'activeMapStyles',
     'locationIqStreets,locationIqDark,openFreeMap',
   );
   const [selectedStyleId, setSelectedStyleId] = usePersistedState(
-    'selectedMapStyle',
-    usePreference('map', 'locationIqStreets'),
+    mapStyleStorageKey(user),
+    initialMapStyle(user, mapPreference),
   );
   const maxZoom = useAttributePreference('web.maxZoom');
 
