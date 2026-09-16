@@ -4,9 +4,11 @@ import LocalGasStationIcon from '@mui/icons-material/LocalGasStation';
 import PowerIcon from '@mui/icons-material/Power';
 import ElectricalServicesIcon from '@mui/icons-material/ElectricalServices';
 import CellTowerIcon from '@mui/icons-material/CellTower';
+import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import dayjs from 'dayjs';
 import QuickDeviceActions from './QuickDeviceActions';
 import useVehicleTelemetry from '../util/useVehicleTelemetry';
+import { getDeviceCommunicationState, getGpsFixState } from '../util/vehicleConnectionStatus';
 import {
   formatBatteryReading,
   formatExternalPowerReading,
@@ -66,6 +68,37 @@ const getAgeText = (device) => {
   return ` — última informação recebida ${dayjs(device.lastUpdate).fromNow()}`;
 };
 
+const getCommunicationPresentation = (device, ageText) => {
+  const state = getDeviceCommunicationState(device);
+  if (state === 'online') {
+    return { title: 'Comunicação: online', color: 'success' };
+  }
+  if (state === 'offline') {
+    return { title: `Comunicação: offline${ageText}`, color: 'error' };
+  }
+  if (state === 'unknown') {
+    return { title: `Comunicação: Sem comunicação${ageText}`, color: 'warning' };
+  }
+  return { title: 'Comunicação: sem dados', color: 'disabled' };
+};
+
+const getGpsPresentation = (position) => {
+  const state = getGpsFixState(position);
+  const positionAge = position?.fixTime
+    ? ` — última posição ${dayjs(position.fixTime).fromNow()}`
+    : '';
+  if (state === 'connected') {
+    return { title: `GPS: conectado${positionAge}`, color: 'success' };
+  }
+  if (state === 'stale') {
+    return { title: `GPS: posição antiga${positionAge}`, color: 'warning' };
+  }
+  if (state === 'invalid') {
+    return { title: `GPS: fix inválido${positionAge}`, color: 'error' };
+  }
+  return { title: 'GPS: sem dados', color: 'disabled' };
+};
+
 const VehicleStatusActions = ({ device, position, variant = 'list', expanded = false }) => {
   const attributes = position?.attributes || {};
   const ageText = getAgeText(device);
@@ -84,7 +117,8 @@ const VehicleStatusActions = ({ device, position, variant = 'list', expanded = f
     externalPower && !isTelemetryReadingCurrent(externalPower, position) && externalPower.timestamp
       ? ` — última leitura ${dayjs(externalPower.timestamp).fromNow()}`
       : '';
-  const gpsConnected = Boolean(position);
+  const communication = getCommunicationPresentation(device, ageText);
+  const gps = getGpsPresentation(position);
   const compact = variant === 'list';
 
   const indicator = (title, icon, value = null) => (
@@ -165,9 +199,10 @@ const VehicleStatusActions = ({ device, position, variant = 'list', expanded = f
         />,
       )}
       {indicator(
-        `Sinal GPS: ${gpsConnected ? 'conectado' : 'desconectado'}${ageText}`,
-        <CellTowerIcon fontSize="small" color={gpsConnected ? 'primary' : 'error'} />,
+        communication.title,
+        <CellTowerIcon fontSize="small" color={communication.color} />,
       )}
+      {indicator(gps.title, <GpsFixedIcon fontSize="small" color={gps.color} />)}
       <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
         <QuickDeviceActions
           device={device}
