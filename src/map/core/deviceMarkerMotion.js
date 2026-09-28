@@ -32,7 +32,10 @@ export const isPositionMoving = (position) => {
   return speed !== null && speed > markerMotionSettings.stationarySpeed;
 };
 
-export const resolveMarkerMotionState = (deviceStatus, position) => {
+export const resolveMarkerMotionState = (deviceStatus, position, gpsFixState = 'connected') => {
+  if (gpsFixState === 'stale') {
+    return 'stale';
+  }
   if (deviceStatus !== 'online') {
     return 'offline';
   }
@@ -121,6 +124,7 @@ export const createMarkerTransition = ({
   previousPosition,
   position,
   deviceStatus,
+  gpsFixState,
   timestamp,
   animate,
 }) => {
@@ -130,7 +134,7 @@ export const createMarkerTransition = ({
   const targetCourse = resolveStableCourse(previous?.lastValidCourse, position);
   const target = resolveMarkerTarget(position);
   return {
-    key: `${position.id}:${position.longitude}:${position.latitude}:${position.course}:${position.speed}`,
+    key: `${position.id}:${position.longitude}:${position.latitude}:${position.course}:${position.speed}:${gpsFixState}`,
     source,
     target,
     sourceCourse: source.course ?? targetCourse,
@@ -138,7 +142,7 @@ export const createMarkerTransition = ({
     lastValidCourse: targetCourse,
     startedAt: timestamp,
     duration: animate ? resolveAnimationDuration(previousPosition, position) : 0,
-    markerState: resolveMarkerMotionState(deviceStatus, position),
+    markerState: resolveMarkerMotionState(deviceStatus, position, gpsFixState),
   };
 };
 

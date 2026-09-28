@@ -1,4 +1,4 @@
-import { useId, useCallback, useEffect, useRef } from 'react';
+import { useId, useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
@@ -16,6 +16,8 @@ import {
   resolveMarkerMotionState,
   sampleMarkerTransition,
 } from './core/deviceMarkerMotion';
+import { useTranslation } from '../common/components/LocalizationProvider';
+import { getGpsFixState } from '../common/util/vehicleConnectionStatus';
 
 const MapPositions = ({
   positions,
@@ -32,10 +34,17 @@ const MapPositions = ({
   const selected = `${id}-selected`;
 
   const theme = useTheme();
+  const t = useTranslation();
   const desktop = useMediaQuery(theme.breakpoints.up('md'));
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const iconScale = useAttributePreference('iconScale', desktop ? 0.75 : 1);
   const animationEnabled = animate && !reducedMotion;
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 60000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const devices = useSelector((state) => state.devices.items);
   const selectedDeviceId = useSelector((state) => state.devices.selectedId);
@@ -72,10 +81,11 @@ const MapPositions = ({
       }
       const customMarker = Boolean(markerImages[position.deviceId]);
       const rotatable = isRotatableVehicleMarker(device.category, customMarker);
+      const stale = markerMotion.markerState === 'stale';
       return {
         id: position.id,
         deviceId: position.deviceId,
-        name: device.name,
+        name: stale ? `${device.name}\n${t('positionLastKnownGps')}` : device.name,
         fixTime: formatTime(position.fixTime, 'seconds'),
         image: resolveDeviceMarkerImage(
           position.deviceId,
@@ -85,12 +95,12 @@ const MapPositions = ({
         ),
         customMarker,
         rotatable,
-        rotation: markerMotion.course,
-        direction: showDirection && !rotatable,
+        rotation: stale ? 0 : markerMotion.course,
+        direction: !stale && showDirection && !rotatable,
         markerState: markerMotion.markerState,
       };
     },
-    [directionType, markerImages, showStatus],
+    [directionType, markerImages, showStatus, t],
   );
 
   const onMouseEnter = () => (map.getCanvas().style.cursor = 'pointer');
@@ -169,10 +179,19 @@ const MapPositions = ({
             '#2e7d32',
             'stopped',
             '#f9a825',
+            'stale',
+            '#ed6c02',
             '#757575',
           ],
           'circle-stroke-width': source === selected ? 3.5 : 2,
-          'circle-opacity': ['case', ['==', ['get', 'markerState'], 'offline'], 0.65, 0.95],
+          'circle-opacity': [
+            'case',
+            ['==', ['get', 'markerState'], 'stale'],
+            0.45,
+            ['==', ['get', 'markerState'], 'offline'],
+            0.65,
+            0.95,
+          ],
           'circle-blur': 0.05,
         },
       });
@@ -316,8 +335,9 @@ const MapPositions = ({
 
     availablePositions.forEach((position) => {
       const device = devices[position.deviceId];
+      const gpsFixState = getGpsFixState(position, now);
       const previous = markerMotionRef.current.get(position.deviceId);
-      const key = `${position.id}:${position.longitude}:${position.latitude}:${position.course}:${position.speed}`;
+      const key = `${position.id}:${position.longitude}:${position.latitude}:${position.course}:${position.speed}:${gpsFixState}`;
       if (!previous || previous.key !== key) {
         markerMotionRef.current.set(
           position.deviceId,
@@ -326,12 +346,13 @@ const MapPositions = ({
             previousPosition: previousPositionsRef.current.get(position.deviceId),
             position,
             deviceStatus: device.status,
+            gpsFixState,
             timestamp,
             animate: animationEnabled && position.deviceId === selectedDeviceId,
           }),
         );
       } else {
-        previous.markerState = resolveMarkerMotionState(device.status, position);
+        previous.markerState = resolveMarkerMotionState(device.status, position, gpsFixState);
       }
     });
     markerMotionRef.current.forEach((_, deviceId) => {
@@ -407,6 +428,7 @@ const MapPositions = ({
     selectedPosition,
     createFeature,
     id,
+    now,
     selected,
     selectedDeviceId,
   ]);

@@ -5,10 +5,13 @@ export const mapMarkerVisualSizes = {
   selectedContent: 42,
 };
 
-// Custom markers keep their original colour and contrast even when the device is
-// offline. The surrounding state ring still communicates the offline condition.
+// A stale GPS fix must be visually distinct even for custom markers. Offline
+// custom markers keep their original colour because the surrounding ring still
+// communicates the connection state.
 export const deviceMarkerOpacityExpression = [
   'case',
+  ['==', ['get', 'markerState'], 'stale'],
+  0.35,
   ['get', 'customMarker'],
   1,
   ['==', ['get', 'markerState'], 'offline'],

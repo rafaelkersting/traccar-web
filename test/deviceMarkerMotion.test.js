@@ -44,6 +44,14 @@ test('diferencia movimento, parada e dispositivo fora de comunicação', () => {
   assert.equal(resolveMarkerMotionState('online', position({ speed: 0 })), 'stopped');
   assert.equal(resolveMarkerMotionState('offline', position({ speed: 10 })), 'offline');
   assert.equal(resolveMarkerMotionState('unknown', position({ speed: 10 })), 'offline');
+  assert.equal(resolveMarkerMotionState('online', position({ speed: 10 }), 'stale'), 'stale');
+});
+
+test('restaura a apresentação normal quando um novo fix GPS válido chega', () => {
+  const moving = position({ speed: 10 });
+
+  assert.equal(resolveMarkerMotionState('online', moving, 'stale'), 'stale');
+  assert.equal(resolveMarkerMotionState('online', moving, 'connected'), 'moving');
 });
 
 test('usa o intervalo das posições para uma animação suave e limitada', () => {

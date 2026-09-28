@@ -132,6 +132,8 @@ test('usa 44 px normalmente e 52 px quando o dispositivo está selecionado', () 
 test('preserva cor e contraste do marcador personalizado mesmo offline', () => {
   assert.deepEqual(deviceMarkerOpacityExpression, [
     'case',
+    ['==', ['get', 'markerState'], 'stale'],
+    0.35,
     ['get', 'customMarker'],
     1,
     ['==', ['get', 'markerState'], 'offline'],

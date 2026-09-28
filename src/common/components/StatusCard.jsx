@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { Rnd } from 'react-rnd';
@@ -17,6 +17,7 @@ import {
   TableFooter,
   Link,
   Tooltip,
+  Alert,
 } from '@mui/material';
 import { makeStyles } from 'tss-react/mui';
 import CloseIcon from '@mui/icons-material/Close';
@@ -46,6 +47,7 @@ import VehicleStatusActions from './VehicleStatusActions';
 import { statusCardModes } from '../../store/mapUi';
 import useAccessPermissions from '../util/useAccessPermissions';
 import { defaultVehicleFollowMode } from '../../map/core/vehicleFollow';
+import { getGpsFixState } from '../util/vehicleConnectionStatus';
 
 const useStyles = makeStyles()((theme, { desktopPadding }) => ({
   card: {
@@ -253,14 +255,24 @@ const StatusCard = ({
   const navigationAppTitle = useAttributePreference('navigationAppTitle');
 
   const [anchorEl, setAnchorEl] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 60000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const [removing, setRemoving] = useState(false);
 
   const collapsed = mode === statusCardModes.collapsed;
   const closed = mode === statusCardModes.closed;
-  const followLabel = followActive
-    ? `Seguindo · ${followMode === 'heading' ? 'Direção para cima' : 'Norte para cima'}`
-    : 'Acompanhamento pausado';
+  const gpsFixState = getGpsFixState(position, now);
+  const staleGpsFix = gpsFixState === 'stale';
+  const followLabel = staleGpsFix
+    ? t('positionLastKnownGps')
+    : followActive
+      ? `Seguindo · ${followMode === 'heading' ? 'Direção para cima' : 'Norte para cima'}`
+      : 'Acompanhamento pausado';
 
   const handleRemove = useCatch(async (removed) => {
     if (removed) {
@@ -326,12 +338,13 @@ const StatusCard = ({
                   <div className={classes.compactText}>
                     <Typography variant="body2" className={classes.compactTitle}>
                       {device.name}
-                      {position && (
+                      {position && !staleGpsFix && (
                         <>
                           {' · '}
                           <PositionValue position={position} property="speed" />
                         </>
                       )}
+                      {position && staleGpsFix && ` · ${t('positionCurrentSpeedUnavailable')}`}
                     </Typography>
                     <Typography
                       variant="caption"
@@ -409,6 +422,15 @@ const StatusCard = ({
                     </div>
                   )}
                 </div>
+                {position && staleGpsFix && (
+                  <Alert severity="warning" sx={{ mx: 2, mt: 1 }}>
+                    <Typography variant="body2">{t('positionLastKnownGps')}</Typography>
+                    <Typography variant="caption">
+                      {t('positionFixTime')}:{' '}
+                      <PositionValue position={position} property="fixTime" />
+                    </Typography>
+                  </Alert>
+                )}
                 {position && (
                   <CardContent className={classes.content}>
                     <Table size="small" className={classes.table}>
@@ -425,11 +447,15 @@ const StatusCard = ({
                               key={key}
                               name={positionAttributes[key]?.name || key}
                               content={
-                                <PositionValue
-                                  position={position}
-                                  property={position.hasOwnProperty(key) ? key : null}
-                                  attribute={position.hasOwnProperty(key) ? null : key}
-                                />
+                                staleGpsFix && ['speed', 'course'].includes(key) ? (
+                                  t('positionStaleValueUnavailable')
+                                ) : (
+                                  <PositionValue
+                                    position={position}
+                                    property={position.hasOwnProperty(key) ? key : null}
+                                    attribute={position.hasOwnProperty(key) ? null : key}
+                                  />
+                                )
                               }
                             />
                           ))}
@@ -508,7 +534,7 @@ const StatusCard = ({
           <MenuItem
             component="a"
             target="_blank"
-            href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${position.latitude}%2C${position.longitude}&heading=${position.course}`}
+            href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${position.latitude}%2C${position.longitude}&heading=${staleGpsFix ? 0 : position.course}`}
           >
             {t('linkStreetView')}
           </MenuItem>
